@@ -1,0 +1,16 @@
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: search_pgos
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: omnibox
+      POSTGRES_USER: omnibox
+      POSTGRES_PASSWORD: omnibox
+    ports: ["${DB_PORT}:5432"]
+    volumes:
+      - pgdataos:/var/lib/postgresql/data
+
+volumes:
+  pgdataos:

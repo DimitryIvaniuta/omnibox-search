@@ -1,0 +1,47 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+
+spring:
+  application:
+    name: omnibox-search
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:omnibox}
+    username: ${DB_USER:omnibox}
+    password: ${DB_PASSWORD:omnibox}
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      connection-timeout: 150
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      hibernate.default_schema: public
+  graphql:
+    graphiql:
+      enabled: true
+    schema:
+      printer:
+        enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,200ms,400ms
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+    com.github.dimitryivaniuta.gateway.search: INFO
