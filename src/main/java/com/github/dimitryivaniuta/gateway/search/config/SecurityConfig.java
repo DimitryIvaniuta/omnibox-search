@@ -17,7 +17,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(reg -> reg
-                        .requestMatchers("/actuator/**", "/graphiql", "/graphql").permitAll() // tighten in prod
+                        .requestMatchers("/actuator/**", "/graphiql/**", "/graphql").permitAll() // tighten in prod
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new TenantFilter(), AnonymousAuthenticationFilter.class)

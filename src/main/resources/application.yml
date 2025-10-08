@@ -4,8 +4,14 @@ server:
 
 
 spring:
+  config:
+    import:
+      - "optional:file:.env[.properties]"
   application:
     name: omnibox-search
+  autoconfigure:
+      exclude:
+        - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:omnibox}
     username: ${DB_USER:omnibox}
@@ -13,18 +19,14 @@ spring:
     hikari:
       maximum-pool-size: 30
       minimum-idle: 10
-      connection-timeout: 150
-  jpa:
-    hibernate:
-      ddl-auto: none
-    open-in-view: false
-    properties:
-      hibernate.jdbc.time_zone: UTC
-      hibernate.default_schema: public
+      connection-timeout: 500
+      validation-timeout: 250
+      connection-init-sql: "SET TIME ZONE 'UTC'"   # UTC for each new connection
   graphql:
     graphiql:
       enabled: true
     schema:
+      locations: classpath:graphql/
       printer:
         enabled: false
 
@@ -44,4 +46,6 @@ logging:
   level:
     root: INFO
     org.hibernate.SQL: WARN
+    org.springframework.graphql: DEBUG
     com.github.dimitryivaniuta.gateway.search: INFO
+
