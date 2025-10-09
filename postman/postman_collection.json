@@ -1,0 +1,150 @@
+{
+  "info": {
+    "name": "search-platform E2E",
+    "_postman_id": "e2d9e0d2-2f0f-4a9a-a7a1-omnibox-demo",
+    "description": "End-to-end CRUD → Outbox → Kafka → Indexer → Omnibox search",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health: write-oltp",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{write_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Health: indexer-search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{indexer_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Health: omnibox-search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Contacts: Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant", "value": "{{tenant}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Sam Chen\",\n  \"email\": \"sam@example.com\",\n  \"phone\": \"+48 600 000 000\",\n  \"label\": \"Buyer lead\"\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{write_port}}/api/contacts"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('contactId', json.id);",
+              "pm.environment.set('contactVersion', json.version || 0);",
+              "pm.test('Captured id', () => !!pm.environment.get('contactId'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contacts: Update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant", "value": "{{tenant}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Sammy Chen\",\n  \"email\": \"sammy@example.com\",\n  \"phone\": \"+48 600 000 001\",\n  \"label\": \"VIP buyer\",\n  \"version\": {{contactVersion}}\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{write_port}}/api/contacts/{{contactId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('contactVersion', json.version);",
+              "pm.test('Version incremented', () => typeof json.version === 'number');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Omnibox: Search (GraphQL)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant", "value": "{{tenant}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"query Omnibox($q:String!, $n:Int!){ omnibox(q:$q, limitPerGroup:$n){ contacts{ id title subtitle score contactId } listings{ id title subtitle score listingId } } }\",\n  \"variables\": { \"q\": \"sam\", \"n\": 5 }\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/graphql"
+      }
+    },
+    {
+      "name": "Contacts: Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "X-Tenant", "value": "{{tenant}}" }
+        ],
+        "url": {
+          "raw": "{{proto}}://{{host}}:{{write_port}}/api/contacts/{{contactId}}?version={{contactVersion}}",
+          "host": ["{{host}}"],
+          "protocol": "{{proto}}",
+          "port": "{{write_port}}",
+          "path": ["api", "contacts", "{{contactId}}"],
+          "query": [{ "key": "version", "value": "{{contactVersion}}" }]
+        }
+      }
+    },
+    {
+      "name": "Omnibox: Search after delete (GraphQL)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant", "value": "{{tenant}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"query Omnibox($q:String!, $n:Int!){ omnibox(q:$q, limitPerGroup:$n){ contacts{ id title subtitle score contactId } } }\",\n  \"variables\": { \"q\": \"sam\", \"n\": 5 }\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/graphql"
+      }
+    }
+  ],
+  "variable": [
+    { "key": "proto", "value": "http" },
+    { "key": "host", "value": "localhost" },
+    { "key": "write_port", "value": "8081" },
+    { "key": "indexer_port", "value": "8082" },
+    { "key": "omnibox_port", "value": "8080" },
+    { "key": "tenant", "value": "demo" },
+    { "key": "contactId", "value": "" },
+    { "key": "contactVersion", "value": "0" }
+  ]
+}

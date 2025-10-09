@@ -7,9 +7,8 @@ import graphql.execution.instrumentation.ChainedInstrumentation;
 import graphql.execution.instrumentation.Instrumentation;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.GraphqlErrorBuilder;
-import graphql.ErrorType;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.graphql.GraphQlSourceBuilderCustomizer; // use this one
+import org.springframework.boot.autoconfigure.graphql.GraphQlSourceBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.graphql.execution.DataFetcherExceptionResolver;
@@ -23,8 +22,8 @@ import java.util.Map;
 public class GraphqlConfig {
 
     /**
-     * Interceptor that reads tenant from header and injects it into the
-     * ExecutionInput "context" (legacy, portable across versions).
+     * Reads tenant from HTTP header and injects it into ExecutionInput legacy context (portable).
+     * Resolvers can read it via env.getContext().
      */
     @Bean
     public WebGraphQlInterceptor tenantGraphQlInterceptor(
@@ -34,18 +33,22 @@ public class GraphqlConfig {
         return (request, chain) -> {
             String tenant = request.getHeaders().getFirst(tenantHeader);
             if (tenant == null && allowMissingTenant) tenant = "";
-            final String t = tenant; // effectively final
+            final String t = tenant;
 
-            // Put tenant into legacy context; resolvers will read env.getContext()
+            // NOTE: context(Object) is deprecated in newer graphql-java, but is the most
+            // version-compatible option. It's safe to use; suppress the warning at compile time.
             request.configureExecutionInput((executionInput, builder) ->
-                    builder.context(Map.of("tenantId", t == null ? "" : t)).build()
+                    builder
+                            //noinspection removal
+                            .context(Map.of("tenantId", t == null ? "" : t))
+                            .build()
             );
 
             return chain.next(request);
         };
     }
 
-    /** Depth/complexity limits using graphql-java instrumentation. */
+    /** Depth/complexity limits using graphql-java instrumentation (no custom overrides). */
     @Bean
     public GraphQlSourceBuilderCustomizer hardeningCustomizer() {
         return builder -> builder.configureGraphQl(graphQlBuilder -> {
@@ -55,7 +58,7 @@ public class GraphqlConfig {
         });
     }
 
-    /** Turn IllegalArgumentException into a clean GraphQL error. */
+    /** Map IllegalArgumentException to a neat GraphQL error (portable across versions). */
     @Bean
     public DataFetcherExceptionResolver clientErrorResolver() {
         return new DataFetcherExceptionResolverAdapter() {
@@ -64,7 +67,6 @@ public class GraphqlConfig {
                 if (ex instanceof IllegalArgumentException iae) {
                     return GraphqlErrorBuilder.newError(env)
                             .message(iae.getMessage())
-                            .errorType(ErrorType.ValidationError)  // use an existing enum
                             .build();
                 }
                 return null;

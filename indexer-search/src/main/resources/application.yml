@@ -1,7 +1,10 @@
 server:
-  port: 8082
+  port: ${INDEXER_SERVER_PORT:8082}
 
 spring:
+  config:
+    import:
+      - "optional:file:.env[.properties]"
   datasource:
     url: jdbc:postgresql://${READ_DB_HOST:localhost}:${READ_DB_PORT:5434}/${READ_DB_NAME:omnibox}?currentSchema=public&sslmode=disable
     username: ${READ_DB_USER:omnibox}
@@ -29,6 +32,7 @@ spring:
     listener:
       ack-mode: BATCH
       concurrency: 3
+      missing-topics-fatal: false
     properties:
       client.id: indexer-search-${HOSTNAME:local}
 
