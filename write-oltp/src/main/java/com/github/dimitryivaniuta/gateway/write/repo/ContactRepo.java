@@ -36,7 +36,7 @@ public class ContactRepo {
     }
 
 
-    public void upsert(Contact c) {
+    public void insert(Contact c) {
         jdbc.update("""
                         insert into contacts(id, tenant_id, full_name, email, phone, label, version, created_at, updated_at, deleted_at)
                         values(?,?,?,?,?,?,?, now(), now(), ?)

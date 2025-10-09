@@ -7,8 +7,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import java.io.IOException;
 
+import java.io.IOException;
 
 public class TenantFilter extends OncePerRequestFilter {
     @Override
@@ -16,7 +16,8 @@ public class TenantFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
-            String tenant = null; String user = null;
+            String tenant = null;
+            String user = null;
             if (StringUtils.hasText(auth) && auth.startsWith("Bearer ")) {
 // In production use NimbusJwtDecoder and SecurityConfig to parse & verify JWT.
 // Here we accept X-Tenant header as a fallback for local dev.

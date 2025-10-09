@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.*;
 
-
 @Repository
 @RequiredArgsConstructor
 public class SearchRepository {
