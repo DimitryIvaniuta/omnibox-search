@@ -1,0 +1,45 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${OLTP_DB_HOST:localhost}:${OLTP_DB_PORT:5433}/${OLTP_DB_NAME:oltp}?currentSchema=public&sslmode=disable
+    username: ${OLTP_DB_USER:omnibox}
+    password: ${OLTP_DB_PASSWORD:omnibox}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 500   # must be >= 250ms
+  flyway:
+    enabled: true
+  kafka:
+    # host-run: localhost:9092  |  container-run: kafka:29092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    # common client props (optional)
+    properties:
+      client.id: write-oltp-${HOSTNAME:local}
+
+    producer:
+      # Spring Boot mapped props (no dots)
+      acks: all
+      retries: 5
+      batch-size: 65536
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+      # Raw Kafka props (with dots) go under producer.properties
+      properties:
+        enable.idempotence: true
+        linger.ms: 10
+        max.in.flight.requests.per.connection: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.springframework.jdbc.core.JdbcTemplate: WARN

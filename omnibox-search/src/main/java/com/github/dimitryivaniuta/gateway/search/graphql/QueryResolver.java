@@ -10,12 +10,11 @@ import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
-
 @Controller
 @RequiredArgsConstructor
 public class QueryResolver {
-    private final OmniboxService service;
 
+    private final OmniboxService service;
 
     @QueryMapping
     public OmniboxResult omnibox(@Argument @NotBlank String q,
@@ -23,4 +22,5 @@ public class QueryResolver {
         int l = (limit == null ? 5 : limit);
         return service.search(q, l);
     }
+
 }

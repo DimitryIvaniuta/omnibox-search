@@ -1,16 +1,108 @@
-
+# version: "3.9"
 services:
-  postgres:
+  pg-oltp:
+    image: postgres:latest
+    container_name: pg-oltp
+#    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${OLTP_DB_USER:-omnibox}
+      POSTGRES_PASSWORD: ${OLTP_DB_PASSWORD:-omnibox}
+      POSTGRES_DB: ${OLTP_DB_NAME:-oltp}
+    ports:
+      - "${OLTP_DB_PORT:-5443}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pg-oltp-data:/var/lib/postgresql/data
+
+  pg-read:
     image: postgres:latest
     container_name: search_pgos
     restart: unless-stopped
     environment:
-      POSTGRES_DB: omnibox
-      POSTGRES_USER: omnibox
-      POSTGRES_PASSWORD: omnibox
-    ports: ["${DB_PORT}:5432"]
+      POSTGRES_USER: ${READ_DB_USER:-omnibox}
+      POSTGRES_PASSWORD: ${READ_DB_PASSWORD:-omnibox}
+      POSTGRES_DB: ${READ_DB_NAME:-omnibox}
+    ports:
+      - "${READ_DB_PORT:-5442}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
     volumes:
       - pgdataos:/var/lib/postgresql/data
 
+  # ---------- Kafka (KRaft, single-node, dual listeners) ----------
+  kafka:
+    image: confluentinc/cp-kafka:8.0.0.amd64
+    container_name: kafkaos
+    restart: unless-stopped
+    ports:
+      - "9092:9092"   # EXTERNAL (host)
+      - "9093:9093"   # CONTROLLER
+      - "29092:29092" # INTERNAL (containers)
+    environment:
+      CLUSTER_ID: "k8iw6OLCQ4GgieIWuiz1eQ"
+      KAFKA_KRAFT_MODE: "true"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: "1"
+
+      # Controller quorum
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+
+      # Listeners: INTERNAL for containers, EXTERNAL for host, CONTROLLER for KRaft
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+
+      # Single-node defaults
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+
+      # Dev convenience
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    entrypoint:
+      - bash
+      - -c
+      - |
+        kafka-storage format --cluster-id "$$CLUSTER_ID" --storage-dir /var/lib/kafka/data
+        exec /etc/confluent/docker/run
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - kafka-dataos:/var/lib/kafka/data
+
+  # ---------- One-shot topic creation ----------
+  kafka-init:
+    image: confluentinc/cp-kafka:8.0.0.amd64
+    container_name: kafkaos-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -e
+        bs="kafka:29092"   # use INTERNAL listener inside the Docker network
+        for t in contact.events.v1 listing.events.v1 referral.events.v1 transaction.events.v1 product.events.v1 mailing.events.v1; do
+          echo "Ensuring topic: $$t"
+          kafka-topics --bootstrap-server "$$bs" --create --if-not-exists --topic "$$t" --partitions 6 --replication-factor 1 || true
+        done
+        echo "Topics ensured."
+    restart: "no"
+
 volumes:
+  pg-oltp-data:
   pgdataos:
+  kafka-dataos:

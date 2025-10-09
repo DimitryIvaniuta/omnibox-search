@@ -1,0 +1,19 @@
+plugins {
+    id 'org.springframework.boot' version '3.5.6'
+    id 'io.spring.dependency-management'
+    id 'java'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    implementation project(':common-events')
+
+    runtimeOnly 'org.postgresql:postgresql:42.7.8'
+    implementation 'org.flywaydb:flyway-core'
+}
