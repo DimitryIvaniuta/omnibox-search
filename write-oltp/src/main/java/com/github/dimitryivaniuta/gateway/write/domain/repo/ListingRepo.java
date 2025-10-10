@@ -47,7 +47,23 @@ public class ListingRepo {
      */
     public Optional<Listing> find(String tenant, UUID id) {
         return jdbc.query(
-                "select * from listings where tenant_id=? and id=?", RM, tenant, id
+                "select * from listings where tenant_id=? and id=?",
+                (rs, n) -> {
+                    var delTs = rs.getTimestamp("deleted_at");
+                    var contactId = (UUID) rs.getObject("contact_id");
+                    return Listing.builder()
+                            .id(UUID.fromString(rs.getString("id")))
+                            .tenantId(rs.getString("tenant_id"))
+                            .title(rs.getString("title"))
+                            .subtitle(rs.getString("subtitle"))
+                            .version(rs.getLong("version"))
+                            .createdAt(rs.getTimestamp("created_at").toInstant())
+                            .updatedAt(rs.getTimestamp("updated_at").toInstant())
+                            .deletedAt(delTs == null ? null : delTs.toInstant())
+                            .contactId(contactId)
+                            .build();
+                },
+                tenant, id
         ).stream().findFirst();
     }
 
@@ -58,8 +74,10 @@ public class ListingRepo {
      */
     public UUID insert(Listing l) {
         final String sql = """
-                insert into listings (tenant_id, mls_id, title, subtitle, version, created_at, updated_at, deleted_at)
-                values (?, ?, ?, ?, 0, now(), now(), null)
+                insert into listings (tenant_id, mls_id, title, subtitle, version, 
+                                      created_at, updated_at, deleted_at,
+                                      contact_id)
+                values (?, ?, ?, ?, 0, now(), now(), null, ?)
                  returning id
                 """;
         return jdbc.query(con -> {
@@ -68,6 +86,7 @@ public class ListingRepo {
             ps.setString(2, l.getMlsId());
             ps.setString(3, l.getTitle());
             ps.setString(4, l.getSubtitle());
+            ps.setObject(5, l.getContactId());           // UUID
             return ps;
         }, rs -> {
             rs.next();
@@ -81,10 +100,15 @@ public class ListingRepo {
     public Listing update(Listing l, long expectedVersion) {
         int c = jdbc.update("""
                         update listings
-                           set title=?, subtitle=?, version=version+1, updated_at=now()
+                           set title=?, 
+                                subtitle=?, 
+                                contact_id = coalesce(?, contact_id),
+                                version=version+1, updated_at=now()
                          where id=? and tenant_id=? and version=? and deleted_at is null
                         """,
-                l.getTitle(), l.getSubtitle(), l.getId(), l.getTenantId(), expectedVersion
+                l.getTitle(), l.getSubtitle(),
+                l.getContactId(),      // may be null → COALESCE keeps old
+                l.getId(), l.getTenantId(), expectedVersion
         );
         if (c == 0) {
             throw new OptimisticLockingFailureException(

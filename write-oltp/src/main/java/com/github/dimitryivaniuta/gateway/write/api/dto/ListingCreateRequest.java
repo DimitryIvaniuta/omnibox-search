@@ -1,6 +1,7 @@
 package com.github.dimitryivaniuta.gateway.write.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 /**
@@ -23,4 +24,8 @@ public class ListingCreateRequest {
      * Optional line shown as subtitle in omnibox.
      */
     private String subtitle;
+
+    /** Contact owner of this listing (must exist in same tenant). */
+    @NotNull
+    private java.util.UUID contactId;
 }

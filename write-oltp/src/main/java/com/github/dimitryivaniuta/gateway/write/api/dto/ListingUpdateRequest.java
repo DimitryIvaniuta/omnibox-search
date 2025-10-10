@@ -22,6 +22,9 @@ public class ListingUpdateRequest {
 
     private String subtitle;
 
+    /** Optional: change the linked contact (must exist in same tenant if provided). */
+    private java.util.UUID contactId;
+
     /**
      * Required current version of the entity for optimistic locking.
      */

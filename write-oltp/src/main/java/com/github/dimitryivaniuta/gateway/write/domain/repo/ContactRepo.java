@@ -59,18 +59,20 @@ public class ContactRepo {
         });
     }
 
-    /** Update with optimistic locking (version check) */
+    /**
+     * Update with optimistic locking (version check)
+     */
     public Contact update(Contact c, long expectedVersion) {
         int updated = jdbc.update("""
-        update contacts
-           set full_name = ?,
-               email = ?,
-               phone = ?,
-               label = ?,
-               version = version + 1,
-               updated_at = now()
-         where id = ? and tenant_id = ? and version = ?
-        """,
+                        update contacts
+                           set full_name = ?,
+                               email = ?,
+                               phone = ?,
+                               label = ?,
+                               version = version + 1,
+                               updated_at = now()
+                         where id = ? and tenant_id = ? and version = ?
+                        """,
                 c.getFullName(), c.getEmail(), c.getPhone(), c.getLabel(),
                 c.getId(), c.getTenantId(), expectedVersion
         );
@@ -82,15 +84,17 @@ public class ContactRepo {
         return find(c.getTenantId(), c.getId()).orElseThrow();
     }
 
-    /** Soft delete (set deleted_at) with optimistic locking */
+    /**
+     * Soft delete (set deleted_at) with optimistic locking
+     */
     public void softDelete(String tenant, UUID id, long expectedVersion) {
         int updated = jdbc.update("""
-        update contacts
-           set deleted_at = now(),
-               version = version + 1,
-               updated_at = now()
-         where id = ? and tenant_id = ? and version = ? and deleted_at is null
-        """,
+                        update contacts
+                           set deleted_at = now(),
+                               version = version + 1,
+                               updated_at = now()
+                         where id = ? and tenant_id = ? and version = ? and deleted_at is null
+                        """,
                 id, tenant, expectedVersion
         );
         if (updated == 0) {
@@ -99,15 +103,17 @@ public class ContactRepo {
         }
     }
 
-    /** Convenience: direct re-activate (not used here, but handy) */
+    /**
+     * Convenience: direct re-activate (not used here, but handy)
+     */
     public void undelete(String tenant, UUID id, long expectedVersion) {
         int updated = jdbc.update("""
-        update contacts
-           set deleted_at = null,
-               version = version + 1,
-               updated_at = now()
-         where id = ? and tenant_id = ? and version = ?
-        """,
+                        update contacts
+                           set deleted_at = null,
+                               version = version + 1,
+                               updated_at = now()
+                         where id = ? and tenant_id = ? and version = ?
+                        """,
                 id, tenant, expectedVersion
         );
         if (updated == 0) {
@@ -116,4 +122,11 @@ public class ContactRepo {
         }
     }
 
+    public boolean contactExists(String tenant, UUID contactId) {
+        Integer one = jdbc.queryForObject(
+                "select 1 from contacts where tenant_id=? and id=? and deleted_at is null",
+                Integer.class, tenant, contactId
+        );
+        return one != null;
+    }
 }
