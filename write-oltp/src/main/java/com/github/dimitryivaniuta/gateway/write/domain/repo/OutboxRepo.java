@@ -1,4 +1,4 @@
-package com.github.dimitryivaniuta.gateway.write.repo;
+package com.github.dimitryivaniuta.gateway.write.domain.repo;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.*;

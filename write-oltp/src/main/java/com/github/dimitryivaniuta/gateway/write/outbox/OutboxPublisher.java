@@ -1,6 +1,6 @@
 package com.github.dimitryivaniuta.gateway.write.outbox;
 
-import com.github.dimitryivaniuta.gateway.write.repo.OutboxRepo;
+import com.github.dimitryivaniuta.gateway.write.domain.repo.OutboxRepo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

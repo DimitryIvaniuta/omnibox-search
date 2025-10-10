@@ -1,0 +1,212 @@
+{
+  "info": {
+    "name": "search-platform E2E — LISTINGS",
+    "_postman_id": "6d0c6f64-5f5a-4b2c-a4c5-omnibox-listings",
+    "description": "End-to-end LISTINGS: CRUD → Outbox → Kafka → Indexer → Omnibox search",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health: write-oltp",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{write_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Health: indexer-search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{indexer_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Health: omnibox-search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Listings: Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Two-bedroom apartment\",\n  \"subtitle\": \"City center\"\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{write_port}}/api/listings"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('listingId', json.id);",
+              "pm.environment.set('listingVersion', json.version || 0);",
+              "pm.test('Captured id', () => !!pm.environment.get('listingId'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Listings: Update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"2BR Apartment — Renovated\",\n  \"subtitle\": \"Near central station\",\n  \"version\": {{listingVersion}}\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{write_port}}/api/listings/{{listingId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('listingVersion', json.version);",
+              "pm.test('Version incremented', () => typeof json.version === 'number');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Omnibox: Search (GraphQL, expect LISTING hit)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"query Omnibox($q:String!, $n:Int!){ omnibox(q:$q, limitPerGroup:$n){ listings{ id title subtitle score listingId } } }\",\n  \"variables\": { \"q\": \"2br\", \"n\": 5 }\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/graphql"
+      }
+    },
+    {
+      "name": "Listings: Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "url": {
+          "raw": "{{proto}}://{{host}}:{{write_port}}/api/listings/{{listingId}}?version={{listingVersion}}",
+          "host": [
+            "{{host}}"
+          ],
+          "protocol": "{{proto}}",
+          "port": "{{write_port}}",
+          "path": [
+            "api",
+            "listings",
+            "{{listingId}}"
+          ],
+          "query": [
+            {
+              "key": "version",
+              "value": "{{listingVersion}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Omnibox: Search after delete (GraphQL)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"query Omnibox($q:String!, $n:Int!){ omnibox(q:$q, limitPerGroup:$n){ listings{ id title subtitle score listingId } } }\",\n  \"variables\": { \"q\": \"2br\", \"n\": 5 }\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/graphql"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "proto",
+      "value": "http"
+    },
+    {
+      "key": "host",
+      "value": "localhost"
+    },
+    {
+      "key": "write_port",
+      "value": "8081"
+    },
+    {
+      "key": "indexer_port",
+      "value": "8082"
+    },
+    {
+      "key": "omnibox_port",
+      "value": "8080"
+    },
+    {
+      "key": "tenant",
+      "value": "demo"
+    },
+    {
+      "key": "listingId",
+      "value": ""
+    },
+    {
+      "key": "listingVersion",
+      "value": "0"
+    }
+  ]
+}

@@ -10,7 +10,14 @@ interface SearchHit {
 }
 
 type SearchHitContact implements SearchHit     { id: ID!, title: String!, subtitle: String, score: Float!, contactId: ID! }
-type SearchHitListing implements SearchHit     { id: ID!, title: String!, subtitle: String, score: Float!, listingId: ID! }
+type SearchHitListing implements SearchHit     {
+    id: ID!
+    title: String!
+    subtitle: String
+    score: Float!
+    listingId: ID!
+    mlsId: String
+}
 type SearchHitReferral implements SearchHit    { id: ID!, title: String!, subtitle: String, score: Float!, referralId: ID! }
 type SearchHitTransaction implements SearchHit { id: ID!, title: String!, subtitle: String, score: Float!, transactionId: ID! }
 type SearchHitProduct implements SearchHit     { id: ID!, title: String!, subtitle: String, score: Float!, productId: ID! }

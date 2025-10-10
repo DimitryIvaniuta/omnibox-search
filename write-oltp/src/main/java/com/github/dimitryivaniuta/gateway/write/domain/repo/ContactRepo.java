@@ -1,4 +1,4 @@
-package com.github.dimitryivaniuta.gateway.write.repo;
+package com.github.dimitryivaniuta.gateway.write.domain.repo;
 
 import com.github.dimitryivaniuta.gateway.write.domain.Contact;
 import lombok.RequiredArgsConstructor;
@@ -28,25 +28,36 @@ public class ContactRepo {
             .deletedAt(rs.getTimestamp("deleted_at") == null ? null : rs.getTimestamp("deleted_at").toInstant())
             .build();
 
-
     public Optional<Contact> find(String tenant, UUID id) {
         return jdbc.query(
                 "select * from contacts where tenant_id=? and id=?",
                 RM, tenant, id).stream().findFirst();
     }
 
-
-    public void insert(Contact c) {
-        jdbc.update("""
-                        insert into contacts(id, tenant_id, full_name, email, phone, label, version, created_at, updated_at, deleted_at)
-                        values(?,?,?,?,?,?,?, now(), now(), ?)
-                        on conflict (id) do update set
-                        full_name=excluded.full_name, email=excluded.email, phone=excluded.phone, label=excluded.label,
-                        version=contacts.version+1, updated_at=now(), deleted_at=excluded.deleted_at
-                        """, c.getId(), c.getTenantId(), c.getFullName(), c.getEmail(), c.getPhone(), c.getLabel(), c.getVersion(),
-                c.getDeletedAt() == null ? null : Timestamp.from(c.getDeletedAt()));
+    /**
+     * Insert new Contact with DB-generated UUID (gen_random_uuid()) and version=0.
+     *
+     * @return the generated id
+     */
+    public UUID insert(Contact c) {
+        final String sql = """
+                insert into contacts (tenant_id, full_name, email, phone, label, version, created_at, updated_at, deleted_at)
+                values (?, ?, ?, ?, ?, 0, now(), now(), null)
+                returning id
+                """;
+        return jdbc.query(con -> {
+            var ps = con.prepareStatement(sql);
+            ps.setString(1, c.getTenantId());
+            ps.setString(2, c.getFullName());
+            ps.setString(3, c.getEmail());
+            ps.setString(4, c.getPhone());
+            ps.setString(5, c.getLabel());
+            return ps;
+        }, rs -> {
+            rs.next();
+            return UUID.fromString(rs.getString(1));
+        });
     }
-
 
     /** Update with optimistic locking (version check) */
     public Contact update(Contact c, long expectedVersion) {

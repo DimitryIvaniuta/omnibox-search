@@ -3,8 +3,8 @@ package com.github.dimitryivaniuta.gateway.write.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dimitryivaniuta.gateway.write.api.dto.*;
 import com.github.dimitryivaniuta.gateway.write.domain.Contact;
-import com.github.dimitryivaniuta.gateway.write.repo.ContactRepo;
-import com.github.dimitryivaniuta.gateway.write.repo.OutboxRepo;
+import com.github.dimitryivaniuta.gateway.write.domain.repo.ContactRepo;
+import com.github.dimitryivaniuta.gateway.write.domain.repo.OutboxRepo;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -22,9 +22,7 @@ public class ContactService {
 
     @Transactional
     public ContactResponse create(String tenant, ContactCreateRequest req) {
-        UUID id = UUID.randomUUID();
         var c = Contact.builder()
-                .id(id)
                 .tenantId(tenant)
                 .fullName(req.getFullName())
                 .email(req.getEmail())
@@ -33,7 +31,7 @@ public class ContactService {
                 .version(0)
                 .build();
 
-        contacts.insert(c);
+        UUID id = contacts.insert(c);
 
         // emit ContactCreated to outbox
         var evt = Map.of(

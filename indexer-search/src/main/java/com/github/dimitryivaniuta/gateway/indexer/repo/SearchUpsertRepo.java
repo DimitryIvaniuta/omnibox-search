@@ -28,6 +28,7 @@ public class SearchUpsertRepo {
 
     /** Logical entity type label persisted in {@code search_items.entity_type}. */
     private static final String ENTITY_CONTACT = "CONTACT";
+    private static final String ENTITY_LISTING = "LISTING";
 
     /**
      * Create a new repository.
@@ -71,6 +72,30 @@ public class SearchUpsertRepo {
                 """;
 
         jdbc.update(sql, tenantId, ENTITY_CONTACT, contactId, title, blankToNull(subtitle));
+    }
+
+    public void upsertListing(String tenantId, String listingId, String title, String subtitle) {
+        if (!StringUtils.hasText(tenantId)) {
+            throw new IllegalArgumentException("tenantId must not be blank");
+        }
+        if (!StringUtils.hasText(listingId)) {
+            throw new IllegalArgumentException("listingId must not be blank");
+        }
+        if (!StringUtils.hasText(title)) {
+            throw new IllegalArgumentException("title must not be blank");
+        }
+
+        // Null subtitle is fine; store as NULL (generated tsvector handles coalesce)
+        final String sql = """
+            INSERT INTO search_items (tenant_id, entity_type, entity_id, title, subtitle)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (tenant_id, entity_type, entity_id)
+            DO UPDATE SET
+              title    = EXCLUDED.title,
+              subtitle = EXCLUDED.subtitle
+            """;
+
+        jdbc.update(sql, tenantId, ENTITY_LISTING, listingId, title, blankToNull(subtitle));
     }
 
     /**
