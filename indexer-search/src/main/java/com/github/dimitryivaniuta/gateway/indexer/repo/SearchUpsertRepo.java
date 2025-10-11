@@ -29,6 +29,7 @@ public class SearchUpsertRepo {
     /** Logical entity type label persisted in {@code search_items.entity_type}. */
     private static final String ENTITY_CONTACT = "CONTACT";
     private static final String ENTITY_LISTING = "LISTING";
+    private static final String ENTITY_TRANSACTION = "TRANSACTION";
 
     /**
      * Create a new repository.
@@ -96,6 +97,28 @@ public class SearchUpsertRepo {
             """;
 
         jdbc.update(sql, tenantId, ENTITY_LISTING, listingId, title, blankToNull(subtitle));
+    }
+
+    /** Upsert a Transaction row into search_items (idempotent via ON CONFLICT). */
+    public void upsertTransaction(String tenantId, String transactionId, String title, String subtitle) {
+        if (!org.springframework.util.StringUtils.hasText(tenantId)) {
+            throw new IllegalArgumentException("tenantId must not be blank");
+        }
+        if (!org.springframework.util.StringUtils.hasText(transactionId)) {
+            throw new IllegalArgumentException("transactionId must not be blank");
+        }
+        if (!org.springframework.util.StringUtils.hasText(title)) {
+            throw new IllegalArgumentException("title must not be blank");
+        }
+        final String sql = """
+      INSERT INTO search_items (tenant_id, entity_type, entity_id, title, subtitle)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT (tenant_id, entity_type, entity_id)
+      DO UPDATE SET
+        title    = EXCLUDED.title,
+        subtitle = EXCLUDED.subtitle
+      """;
+        jdbc.update(sql, tenantId, ENTITY_TRANSACTION, transactionId, title, blankToNull(subtitle));
     }
 
     /**

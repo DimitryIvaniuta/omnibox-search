@@ -131,4 +131,23 @@ public class ListingRepo {
                     "Listing delete version mismatch or already deleted: id=" + id);
         }
     }
+
+    public UUID listingContact(String tenant, UUID listingId) {
+        return jdbc.query(con -> {
+            var ps = con.prepareStatement(
+                    "select contact_id from listings where tenant_id=? and id=? and deleted_at is null");
+            ps.setString(1, tenant);
+            ps.setObject(2, listingId);
+            return ps;
+        }, rs -> rs.next() ? (UUID) rs.getObject(1) : null);
+    }
+
+    public boolean listingExists(String tenant, UUID listingId) {
+        Integer one = jdbc.queryForObject(
+                "select 1 from listings where tenant_id=? and id=? and deleted_at is null",
+                Integer.class, tenant, listingId
+        );
+        return one != null;
+    }
+
 }

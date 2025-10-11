@@ -1,0 +1,152 @@
+package com.github.dimitryivaniuta.gateway.write.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.dimitryivaniuta.gateway.write.api.dto.*;
+import com.github.dimitryivaniuta.gateway.write.domain.Transaction;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+
+import com.github.dimitryivaniuta.gateway.write.domain.repo.ContactRepo;
+import com.github.dimitryivaniuta.gateway.write.domain.repo.ListingRepo;
+import com.github.dimitryivaniuta.gateway.write.domain.repo.OutboxRepo;
+import com.github.dimitryivaniuta.gateway.write.domain.repo.TransactionRepo;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Application service for Transactions:
+ * - CRUD in OLTP
+ * - Outbox event emission within the same transaction
+ */
+@Service
+@RequiredArgsConstructor
+public class TransactionService {
+
+    private final ListingRepo listingRepo;
+    private final ContactRepo contactRepo;
+    private final TransactionRepo txns;
+    private final OutboxRepo outbox;
+    private final ObjectMapper om;
+
+    @Transactional
+    public TransactionResponse create(String tenant, TransactionCreateRequest req) {
+        var t = Transaction.builder()
+                .tenantId(tenant)
+                .title(req.getTitle())
+                .subtitle(req.getSubtitle())
+                .amount(req.getAmount())
+                .currency(req.getCurrency())
+                .status(req.getStatus())
+                .version(0)
+                .build();
+
+        UUID id = txns.insertAndReturnId(t);
+
+        var evt = Map.of(
+                "type", "TransactionCreated",
+                "tenantId", tenant,
+                "transactionId", id.toString(),
+                "title", t.getTitle(),
+                "subtitle", t.getSubtitle() == null ? "" : t.getSubtitle(),
+                "visible", true,
+                "version", 0,
+                "occurredAt", Instant.now().toString()
+        );
+        outbox.add(tenant, "TRANSACTION", id.toString(), "TransactionCreated", toJson(evt));
+
+        return TransactionResponse.builder()
+                .id(id.toString())
+                .title(t.getTitle())
+                .subtitle(t.getSubtitle())
+                .amount(t.getAmount())
+                .currency(t.getCurrency())
+                .status(t.getStatus())
+                .contactId(req.getContactId().toString())
+                .listingId(req.getListingId().toString())
+                .version(0)
+                .build();
+    }
+
+    @Transactional
+    public TransactionResponse update(String tenant, UUID id, TransactionUpdateRequest req) {
+        // If relations are provided, validate them
+        UUID newContactId = req.getContactId();
+        UUID newListingId = req.getListingId();
+
+        if (newContactId != null && !contactRepo.contactExists(tenant, newContactId)) {
+            throw new IllegalArgumentException("Contact does not exist in tenant or is deleted: " + newContactId);
+        }
+        if (newListingId != null && !listingRepo.listingExists(tenant, newListingId)) {
+            throw new IllegalArgumentException("Listing does not exist in tenant or is deleted: " + newListingId);
+        }
+        if (newContactId != null && newListingId != null) {
+            UUID link = listingRepo.listingContact(tenant, newListingId);
+            if (link == null || !link.equals(newContactId)) {
+                throw new IllegalArgumentException("Listing is not linked to the provided Contact in this tenant.");
+            }
+        }
+
+        var updated = Transaction.builder()
+                .id(id).tenantId(tenant)
+                .title(req.getTitle())
+                .subtitle(req.getSubtitle())
+                .amount(req.getAmount())
+                .currency(req.getCurrency())
+                .status(req.getStatus())
+                .contactId(newContactId)   // may be null -> COALESCE in repo keeps current
+                .listingId(newListingId)   // may be null -> COALESCE keeps current
+                .build();
+
+        var fresh = txns.update(updated, req.getVersion());
+
+        var evt = Map.of(
+                "type", "TransactionUpdated",
+                "tenantId", tenant,
+                "transactionId", id.toString(),
+                "contactId", fresh.getContactId() == null ? null : fresh.getContactId().toString(),
+                "listingId", fresh.getListingId() == null ? null : fresh.getListingId().toString(),
+                "title", fresh.getTitle(),
+                "subtitle", fresh.getSubtitle() == null ? "" : fresh.getSubtitle(),
+                "visible", true,
+                "version", fresh.getVersion(),
+                "occurredAt", Instant.now().toString()
+        );
+        outbox.add(tenant, "TRANSACTION", id.toString(), "TransactionUpdated", toJson(evt));
+
+        return TransactionResponse.builder()
+                .id(id.toString())
+                .title(fresh.getTitle())
+                .subtitle(fresh.getSubtitle())
+                .amount(fresh.getAmount())
+                .currency(fresh.getCurrency())
+                .status(fresh.getStatus())
+                .version(fresh.getVersion())
+                .build();
+    }
+
+    @Transactional
+    public void delete(String tenant, UUID id, long expectedVersion) {
+        txns.softDelete(tenant, id, expectedVersion);
+
+        var evt = Map.of(
+                "type", "TransactionDeleted",
+                "tenantId", tenant,
+                "transactionId", id.toString(),
+                "visible", false,
+                "version", expectedVersion + 1,
+                "occurredAt", Instant.now().toString()
+        );
+        outbox.add(tenant, "TRANSACTION", id.toString(), "TransactionDeleted", toJson(evt));
+    }
+
+    private String toJson(Object obj) {
+        try {
+            return om.writeValueAsString(obj);
+        } catch (Exception e) {
+            throw new RuntimeException("JSON serialize failed", e);
+        }
+    }
+}
