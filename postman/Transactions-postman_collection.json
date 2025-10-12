@@ -1,0 +1,300 @@
+{
+  "info": {
+    "name": "search-platform E2E — TRANSACTIONS",
+    "_postman_id": "9a1f2a86-5a9f-4b7d-9b1e-omnibox-transactions",
+    "description": "End-to-end: Contact → Listing → Transaction (CRUD) → Outbox → Kafka → Indexer → Omnibox search",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health: write-oltp",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{write_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Health: indexer-search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{indexer_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Health: omnibox-search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/actuator/health"
+      }
+    },
+    {
+      "name": "Contacts: Create (for Transaction chain)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Sam Buyer\",\n  \"email\": \"sam.buyer+txn@example.com\",\n  \"phone\": \"+48 600 000 111\",\n  \"label\": \"Primary\"\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{write_port}}/api/contacts"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('contactId', json.id);",
+              "pm.environment.set('contactVersion', json.version || 0);",
+              "pm.test('Captured contactId', () => !!pm.environment.get('contactId'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Listings: Create (linked to Contact)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"2BR Apartment — Center\",\n  \"subtitle\": \"MLS #ABC-1001\",\n  \"contactId\": \"{{contactId}}\"\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{write_port}}/api/listings"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('listingId', json.id);",
+              "pm.environment.set('listingVersion', json.version || 0);",
+              "pm.test('Captured listingId', () => !!pm.environment.get('listingId'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions: Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Invoice #A123\",\n  \"subtitle\": \"Reservation deposit\",\n  \"amount\": 1999.99,\n  \"currency\": \"EUR\",\n  \"status\": \"NEW\",\n  \"contactId\": \"{{contactId}}\",\n  \"listingId\": \"{{listingId}}\"\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{write_port}}/api/transactions"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('transactionId', json.id);",
+              "pm.environment.set('transactionVersion', json.version || 0);",
+              "pm.test('Captured transactionId', () => !!pm.environment.get('transactionId'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions: Update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Invoice #A123 (Updated)\",\n  \"subtitle\": \"Reservation deposit — adjusted\",\n  \"amount\": 2099.99,\n  \"currency\": \"EUR\",\n  \"status\": \"PENDING\",\n  \"version\": {{transactionVersion}}\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{write_port}}/api/transactions/{{transactionId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('transactionVersion', json.version);",
+              "pm.test('Version updated', () => typeof json.version === 'number');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Omnibox: Search (expect TRANSACTION hit)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"query Omnibox($q:String!, $n:Int!){ omnibox(q:$q, limitPerGroup:$n){ transactions{ id title subtitle score transactionId } } }\",\n  \"variables\": { \"q\": \"invoice\", \"n\": 5 }\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/graphql"
+      }
+    },
+    {
+      "name": "Transactions: Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "url": {
+          "raw": "{{proto}}://{{host}}:{{write_port}}/api/transactions/{{transactionId}}?version={{transactionVersion}}",
+          "host": [
+            "{{host}}"
+          ],
+          "protocol": "{{proto}}",
+          "port": "{{write_port}}",
+          "path": [
+            "api",
+            "transactions",
+            "{{transactionId}}"
+          ],
+          "query": [
+            {
+              "key": "version",
+              "value": "{{transactionVersion}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Omnibox: Search after delete (TRANSACTION should be gone)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant",
+            "value": "{{tenant}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"query Omnibox($q:String!, $n:Int!){ omnibox(q:$q, limitPerGroup:$n){ transactions{ id title subtitle score transactionId } } }\",\n  \"variables\": { \"q\": \"invoice\", \"n\": 5 }\n}"
+        },
+        "url": "{{proto}}://{{host}}:{{omnibox_port}}/graphql"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "proto",
+      "value": "http"
+    },
+    {
+      "key": "host",
+      "value": "localhost"
+    },
+    {
+      "key": "write_port",
+      "value": "8081"
+    },
+    {
+      "key": "indexer_port",
+      "value": "8082"
+    },
+    {
+      "key": "omnibox_port",
+      "value": "8080"
+    },
+    {
+      "key": "tenant",
+      "value": "demo"
+    },
+    {
+      "key": "contactId",
+      "value": ""
+    },
+    {
+      "key": "contactVersion",
+      "value": "0"
+    },
+    {
+      "key": "listingId",
+      "value": ""
+    },
+    {
+      "key": "listingVersion",
+      "value": "0"
+    },
+    {
+      "key": "transactionId",
+      "value": ""
+    },
+    {
+      "key": "transactionVersion",
+      "value": "0"
+    }
+  ]
+}

@@ -40,6 +40,8 @@ public class TransactionService {
                 .amount(req.getAmount())
                 .currency(req.getCurrency())
                 .status(req.getStatus())
+                .contactId(req.getContactId())
+                .listingId(req.getListingId())
                 .version(0)
                 .build();
 
@@ -102,18 +104,24 @@ public class TransactionService {
 
         var fresh = txns.update(updated, req.getVersion());
 
-        var evt = Map.of(
-                "type", "TransactionUpdated",
-                "tenantId", tenant,
-                "transactionId", id.toString(),
-                "contactId", fresh.getContactId() == null ? null : fresh.getContactId().toString(),
-                "listingId", fresh.getListingId() == null ? null : fresh.getListingId().toString(),
-                "title", fresh.getTitle(),
-                "subtitle", fresh.getSubtitle() == null ? "" : fresh.getSubtitle(),
-                "visible", true,
-                "version", fresh.getVersion(),
-                "occurredAt", Instant.now().toString()
-        );
+        var evt = new java.util.LinkedHashMap<String, Object>(10);
+        evt.put("type", "TransactionUpdated");
+        evt.put("tenantId", tenant);
+        evt.put("transactionId", id.toString());
+
+        if (fresh.getContactId() != null) {
+            evt.put("contactId", fresh.getContactId().toString());
+        }
+        if (fresh.getListingId() != null) {
+            evt.put("listingId", fresh.getListingId().toString());
+        }
+
+        evt.put("title", fresh.getTitle());
+        evt.put("subtitle", fresh.getSubtitle() == null ? "" : fresh.getSubtitle());
+        evt.put("visible", Boolean.TRUE);
+        evt.put("version", fresh.getVersion());
+        evt.put("occurredAt", java.time.Instant.now().toString());
+
         outbox.add(tenant, "TRANSACTION", id.toString(), "TransactionUpdated", toJson(evt));
 
         return TransactionResponse.builder()
