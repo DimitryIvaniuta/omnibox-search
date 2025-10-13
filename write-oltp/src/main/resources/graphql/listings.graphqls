@@ -21,6 +21,7 @@ type Listing {
 input CreateListingInput {
     title: String!
     subtitle: String
+    mlsId: String
     contactId: ID!
 }
 

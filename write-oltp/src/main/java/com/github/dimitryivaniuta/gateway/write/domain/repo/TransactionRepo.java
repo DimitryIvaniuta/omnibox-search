@@ -4,11 +4,13 @@ import com.github.dimitryivaniuta.gateway.write.domain.Transaction;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -19,22 +21,40 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class TransactionRepo {
 
     private final JdbcTemplate jdbc;
 
-    private static final RowMapper<Transaction> RM = new RowMapper<>() {
-        @Override
-        public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
-            var delTs = rs.getTimestamp("deleted_at");
-            return Transaction.builder().id((UUID) rs.getObject("id")).tenantId(rs.getString("tenant_id")).title(rs.getString("title")).subtitle(rs.getString("subtitle")).amount(rs.getBigDecimal("amount")).currency(rs.getString("currency")).status(rs.getString("status")).version(rs.getLong("version")).createdAt(rs.getTimestamp("created_at").toInstant()).updatedAt(rs.getTimestamp("updated_at").toInstant()).deletedAt(delTs == null ? null : delTs.toInstant()).build();
-        }
-    };
+    private static final RowMapper<Transaction> RM = (rs, i) -> {
+        UUID id = rs.getObject("id", UUID.class);
+        UUID contactId = rs.getObject("contact_id", UUID.class);
+        UUID listingId = rs.getObject("listing_id", UUID.class);
+        Timestamp createdTs = rs.getTimestamp("created_at");
+        Timestamp updatedTs = rs.getTimestamp("updated_at");
+        Timestamp deletedTs = rs.getTimestamp("deleted_at");
 
+        return Transaction.builder()
+                .id(id)
+                .tenantId(rs.getString("tenant_id"))
+                .title(rs.getString("title"))
+                .subtitle(rs.getString("subtitle"))
+                .amount(rs.getBigDecimal("amount"))
+                .currency(rs.getString("currency"))
+                .status(rs.getString("status"))
+                .contactId(contactId)
+                .listingId(listingId)
+                .version(rs.getLong("version"))
+                .createdAt(createdTs != null ? createdTs.toInstant() : null)
+                .updatedAt(updatedTs != null ? updatedTs.toInstant() : null)
+                .deletedAt(deletedTs != null ? deletedTs.toInstant() : null)
+                .build();
+    };
     /**
      * Insert new Transaction with DB-generated UUID and version=0. @return generated id
      */
     public UUID insertAndReturnId(Transaction t) {
+        log.info("TX.create tenant={} contactId={} listingId={}", t.getTenantId(), t.getContactId(), t.getListingId());
         final String sql = """
                 insert into transactions
                   (tenant_id, title, subtitle, amount, currency, status, 

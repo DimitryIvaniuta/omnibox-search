@@ -11,7 +11,9 @@ public final class TenantContext {
     }
 
     public static String get() {
-        return TENANT.get();
+        String t = TENANT.get();
+        if (t == null || t.isBlank()) throw new IllegalArgumentException("Missing X-Tenant header");
+        return t;
     }
 
     public static void clear() {

@@ -1,0 +1,501 @@
+{
+  "info": {
+    "name": "search-platform \u2014 write-oltp GraphQL",
+    "_postman_id": "a3d8b2b2-8f5f-4e4c-9b8f-1760385017",
+    "description": "GraphQL CRUD for Contact, Listing, Transaction on write-oltp service. Uses /graphql with X-Tenant header.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Contact",
+      "item": [
+        {
+          "name": "Get Contact by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query contact($id: ID!) { contact(id: $id) { id fullName email phone label version } }\",\n  \"variables\": {\n    \"id\": \"{{contactId}}\"\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Contacts (prefix)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query searchContacts($q: String!, $first: Int) { searchContacts(q: $q, first: $first) { id fullName email phone label version } }\",\n  \"variables\": {\n    \"q\": \"sam\",\n    \"first\": \"{{first}}\"\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Contact",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation createContact($input: CreateContactInput!) { createContact(input: $input) { id fullName email phone label version } }\",\n  \"variables\": {\n    \"input\": {\n      \"fullName\": \"Sam Chen\",\n      \"email\": \"sam@example.com\",\n      \"phone\": \"+1234567\",\n      \"label\": \"Buyer\"\n    }\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Contact",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation updateContact($id: ID!, $input: UpdateContactInput!) { updateContact(id: $id, input: $input) { id fullName email phone label version } }\",\n  \"variables\": {\n    \"id\": \"{{contactId}}\",\n    \"input\": {\n      \"fullName\": \"Samuel Chen\",\n      \"email\": \"sam@example.com\",\n      \"phone\": \"+1234567\",\n      \"label\": \"VIP\",\n      \"version\": 1\n    }\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Contact",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation deleteContact($id: ID!, $version: Long!) { deleteContact(id: $id, version: $version) }\",\n  \"variables\": {\n    \"id\": \"{{contactId}}\",\n    \"version\": 1\n  }\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Listing",
+      "item": [
+        {
+          "name": "Get Listing by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query listing($id: ID!) { listing(id: $id) { id title subtitle mlsId version contactId } }\",\n  \"variables\": {\n    \"id\": \"{{listingId}}\"\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Listings (prefix)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query searchListings($q: String!, $first: Int) { searchListings(q: $q, first: $first) { id title subtitle mlsId version contactId } }\",\n  \"variables\": {\n    \"q\": \"home\",\n    \"first\": \"{{first}}\"\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation createListing($input: CreateListingInput!) { createListing(input: $input) { id title subtitle mlsId version contactId } }\",\n  \"variables\": {\n    \"input\": {\n      \"title\": \"Lakeview Home\",\n      \"subtitle\": \"3BR/2BA\",\n      \"contactId\": \"{{contactId}}\"\n    }\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation updateListing($id: ID!, $input: UpdateListingInput!) { updateListing(id: $id, input: $input) { id title subtitle mlsId version contactId } }\",\n  \"variables\": {\n    \"id\": \"{{listingId}}\",\n    \"input\": {\n      \"title\": \"Lakeview House\",\n      \"subtitle\": \"3BR/2BA updated\",\n      \"contactId\": \"{{contactId}}\",\n      \"version\": 1\n    }\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation deleteListing($id: ID!, $version: Long!) { deleteListing(id: $id, version: $version) }\",\n  \"variables\": {\n    \"id\": \"{{listingId}}\",\n    \"version\": 1\n  }\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Transaction",
+      "item": [
+        {
+          "name": "Get Transaction by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query transaction($id: ID!) { transaction(id: $id) { id title subtitle amount currency status version contactId listingId } }\",\n  \"variables\": {\n    \"id\": \"{{transactionId}}\"\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Transactions (prefix)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query searchTransactions($q: String!, $first: Int) { searchTransactions(q: $q, first: $first) { id title subtitle amount currency status version contactId listingId } }\",\n  \"variables\": {\n    \"q\": \"sale\",\n    \"first\": \"{{first}}\"\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation createTransaction($input: CreateTransactionInput!) { createTransaction(input: $input) { id title subtitle amount currency status version contactId listingId } }\",\n  \"variables\": {\n    \"input\": {\n      \"title\": \"Offer Accepted\",\n      \"subtitle\": \"Escrow opened\",\n      \"amount\": 450000.0,\n      \"currency\": \"USD\",\n      \"status\": \"OPEN\",\n      \"contactId\": \"{{contactId}}\",\n      \"listingId\": \"{{listingId}}\"\n    }\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation updateTransaction($id: ID!, $input: UpdateTransactionInput!) { updateTransaction(id: $id, input: $input) { id title subtitle amount currency status version contactId listingId } }\",\n  \"variables\": {\n    \"id\": \"{{transactionId}}\",\n    \"input\": {\n      \"title\": \"Closed\",\n      \"subtitle\": \"Recorded\",\n      \"amount\": 455000.0,\n      \"currency\": \"USD\",\n      \"status\": \"CLOSED\",\n      \"contactId\": \"{{contactId}}\",\n      \"listingId\": \"{{listingId}}\",\n      \"version\": 1\n    }\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenant}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation deleteTransaction($id: ID!, $version: Long!) { deleteTransaction(id: $id, version: $version) }\",\n  \"variables\": {\n    \"id\": \"{{transactionId}}\",\n    \"version\": 1\n  }\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "tenant",
+      "value": "demo-tenant"
+    },
+    {
+      "key": "first",
+      "value": "20"
+    },
+    {
+      "key": "contactId",
+      "value": ""
+    },
+    {
+      "key": "listingId",
+      "value": ""
+    },
+    {
+      "key": "transactionId",
+      "value": ""
+    }
+  ]
+}
