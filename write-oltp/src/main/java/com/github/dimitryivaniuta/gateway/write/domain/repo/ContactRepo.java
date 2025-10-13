@@ -122,6 +122,30 @@ public class ContactRepo {
         }
     }
 
+    public List<Contact> searchByPrefix(String tenant, String q, Integer first) {
+        final String term = (q == null ? "" : q.trim());
+        if (term.isEmpty()) return List.of();
+
+        final int limit = (first == null || first <= 0 || first > 100) ? 20 : first;
+        final String pattern = term.toLowerCase() + "%";
+
+        final String sql = """
+      select *
+        from contacts
+       where tenant_id = ?
+         and deleted_at is null
+         and (
+              lower(full_name) like ?
+           or lower(email)     like ?
+           or lower(coalesce(phone,'')) like ?
+         )
+       order by lower(full_name) asc, id asc
+       limit ?
+      """;
+
+        return jdbc.query(sql, RM, tenant, pattern, pattern, pattern, limit);
+    }
+
     public boolean contactExists(String tenant, UUID contactId) {
         Integer one = jdbc.queryForObject(
                 "select 1 from contacts where tenant_id=? and id=? and deleted_at is null",

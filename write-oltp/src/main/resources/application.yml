@@ -15,6 +15,12 @@ spring:
       connection-timeout: 500   # must be >= 250ms
   flyway:
     enabled: true
+  graphql:
+    graphiql:
+      enabled: true   # dev only
+    cors:
+      allowed-origins: "*"
+      allowed-methods: GET,POST
   kafka:
     # host-run: localhost:9092  |  container-run: kafka:29092
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

@@ -28,6 +28,9 @@ spring:
       locations: classpath:graphql/
       printer:
         enabled: false
+    cors:
+      allowed-origins: "*"
+      allowed-methods: GET,POST
 
 management:
   endpoints:

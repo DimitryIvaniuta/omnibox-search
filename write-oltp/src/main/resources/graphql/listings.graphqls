@@ -1,0 +1,32 @@
+extend type Query {
+    listing(id: ID!): Listing
+    searchListings(q: String!, first: Int = 20): [Listing!]!
+}
+
+extend type Mutation {
+    createListing(input: CreateListingInput!): Listing!
+    updateListing(id: ID!, input: UpdateListingInput!): Listing!
+    deleteListing(id: ID!, version: Long!): Boolean!
+}
+
+type Listing {
+    id: ID!
+    title: String!
+    subtitle: String
+    mlsId: String
+    version: Long!
+    contactId: ID!
+}
+
+input CreateListingInput {
+    title: String!
+    subtitle: String
+    contactId: ID!
+}
+
+input UpdateListingInput {
+    title: String!
+    subtitle: String
+    contactId: ID
+    version: Long!
+}

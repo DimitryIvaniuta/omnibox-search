@@ -1,0 +1,6 @@
+# Shared custom scalars
+scalar Long
+
+# Root types (declared once)
+type Query
+type Mutation

@@ -5,6 +5,7 @@ import com.github.dimitryivaniuta.gateway.write.domain.Listing;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -130,6 +131,30 @@ public class ListingRepo {
             throw new OptimisticLockingFailureException(
                     "Listing delete version mismatch or already deleted: id=" + id);
         }
+    }
+
+    public List<Listing> searchByPrefix(String tenant, String q, Integer first) {
+        final String term = (q == null ? "" : q.trim());
+        if (term.isEmpty()) return List.of();
+
+        final int limit = (first == null || first <= 0 || first > 100) ? 20 : first;
+        final String pattern = term.toLowerCase() + "%";
+
+        final String sql = """
+      select *
+        from listings
+       where tenant_id = ?
+         and deleted_at is null
+         and (
+              lower(title)              like ?
+           or lower(coalesce(subtitle,'')) like ?
+           or lower(coalesce(mls_id,''))   like ?
+         )
+       order by lower(title) asc, id asc
+       limit ?
+      """;
+
+        return jdbc.query(sql, RM, tenant, pattern, pattern, pattern, limit);
     }
 
     public UUID listingContact(String tenant, UUID listingId) {

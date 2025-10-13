@@ -1,0 +1,43 @@
+extend type Query {
+    transaction(id: ID!): Transaction
+    searchTransactions(q: String!, first: Int = 20): [Transaction!]!
+}
+
+extend type Mutation {
+    createTransaction(input: CreateTransactionInput!): Transaction!
+    updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction!
+    deleteTransaction(id: ID!, version: Long!): Boolean!
+}
+
+type Transaction {
+    id: ID!
+    title: String!
+    subtitle: String
+    amount: Float
+    currency: String
+    status: String
+    version: Long!
+    contactId: ID!
+    listingId: ID!
+}
+
+input CreateTransactionInput {
+    title: String!
+    subtitle: String
+    amount: Float
+    currency: String
+    status: String
+    contactId: ID!
+    listingId: ID!
+}
+
+input UpdateTransactionInput {
+    title: String!
+    subtitle: String
+    amount: Float
+    currency: String
+    status: String
+    contactId: ID
+    listingId: ID
+    version: Long!
+}
