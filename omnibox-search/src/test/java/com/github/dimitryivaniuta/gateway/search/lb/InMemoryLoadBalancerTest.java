@@ -121,9 +121,18 @@ class InMemoryLoadBalancerTest {
     void springAutoConfig_backsOff() {
 
         class CustomLb implements LoadBalancer {
-            @Override public void register(String address) { /* no-op */ }
-            @Override public List<String> getInstances() { return List.of("custom"); }
-            @Override public int size() { return 1; }
+            @Override
+            public void register(String address) { /* no-op */ }
+
+            @Override
+            public List<String> getInstances() {
+                return List.of("custom");
+            }
+
+            @Override
+            public int size() {
+                return 1;
+            }
         }
 
         new ApplicationContextRunner()
