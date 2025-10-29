@@ -52,7 +52,7 @@ public class GraphqlConfig {
     @Bean
     public GraphQlSourceBuilderCustomizer hardeningCustomizer() {
         return builder -> builder.configureGraphQl(graphQlBuilder -> {
-            Instrumentation depth = new MaxQueryDepthInstrumentation(8);
+            Instrumentation depth = new MaxQueryDepthInstrumentation(32);
             Instrumentation complexity = new MaxQueryComplexityInstrumentation(200);
             graphQlBuilder.instrumentation(new ChainedInstrumentation(List.of(depth, complexity)));
         });

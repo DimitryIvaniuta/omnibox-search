@@ -28,3 +28,10 @@ dependencies {
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }
+
+tasks.register('printSchema', JavaExec) {
+    group = "graphql"
+    description = "Export GraphQL SDL to build/schema.graphqls"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.github.dimitryivaniuta.tools.searchschema.SchemaExporterMain'
+}

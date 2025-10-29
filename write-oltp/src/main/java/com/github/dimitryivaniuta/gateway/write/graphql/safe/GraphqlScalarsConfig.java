@@ -1,4 +1,4 @@
-package com.github.dimitryivaniuta.gateway.write.graphql;
+package com.github.dimitryivaniuta.gateway.write.graphql.safe;
 
 import graphql.scalars.ExtendedScalars;
 import org.springframework.context.annotation.Bean;
@@ -6,8 +6,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.graphql.execution.RuntimeWiringConfigurer;
 
 /**
- * Registers custom GraphQL scalars once per application.
- * Keep resolver wiring in a separate config to avoid duplicate registrations.
+ * Registers custom GraphQL scalars (e.g. Long).
+ * This does not use repositories or services and is safe for schema export.
  */
 @Configuration
 public class GraphqlScalarsConfig {

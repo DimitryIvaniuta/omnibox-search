@@ -7,16 +7,20 @@ plugins {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
 
     // GraphQL (brings graphql-java + spring-graphql)
     implementation 'org.springframework.boot:spring-boot-starter-graphql'
     // Custom scalars (Long, etc.) — version compatible with graphql-java
     implementation 'com.graphql-java:graphql-java-extended-scalars:24.0'
+    implementation 'com.graphql-java:graphql-java:24.3'
 
     implementation project(':common-events')
 
@@ -24,4 +28,16 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.register('printSchema', JavaExec) {
+    group = "graphql"
+    description = "Export GraphQL SDL to build/schema.graphqls"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.github.dimitryivaniuta.tools.searchschema.SchemaExporterMain'
 }

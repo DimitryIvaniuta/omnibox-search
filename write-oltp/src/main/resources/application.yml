@@ -6,7 +6,7 @@ spring:
     import:
       - "optional:file:.env[.properties]"
   datasource:
-    url: jdbc:postgresql://${OLTP_DB_HOST:localhost}:${OLTP_DB_PORT:5433}/${OLTP_DB_NAME:oltp}?currentSchema=public&sslmode=disable
+    url: jdbc:postgresql://${OLTP_DB_HOST:localhost1}:${OLTP_DB_PORT:5431}/${OLTP_DB_NAME:oltp}?currentSchema=public&sslmode=disable
     username: ${OLTP_DB_USER:omnibox}
     password: ${OLTP_DB_PASSWORD:omnibox}
     hikari:
