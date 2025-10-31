@@ -35,6 +35,10 @@ Deliver a single GraphQL search endpoint that returns **grouped, ranked, case‑
 
 ## GraphQL API
 
+# Print Schema
+./gradlew :omnibox-search:printSchema
+./gradlew :write-oltp:printSchema
+
 ### Single entrypoint
 
 ```graphql

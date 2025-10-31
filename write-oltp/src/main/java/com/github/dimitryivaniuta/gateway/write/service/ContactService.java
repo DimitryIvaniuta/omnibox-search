@@ -1,11 +1,14 @@
 package com.github.dimitryivaniuta.gateway.write.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.dimitryivaniuta.gateway.write.api.dto.*;
+import com.github.dimitryivaniuta.gateway.write.api.dto.ContactCreateRequest;
+import com.github.dimitryivaniuta.gateway.write.api.dto.ContactResponse;
+import com.github.dimitryivaniuta.gateway.write.api.dto.ContactUpdateRequest;
 import com.github.dimitryivaniuta.gateway.write.domain.Contact;
 import com.github.dimitryivaniuta.gateway.write.domain.repo.ContactRepo;
 import com.github.dimitryivaniuta.gateway.write.domain.repo.OutboxRepo;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ContactService {
 
-    private final ContactRepo contacts;
+    private final ContactRepo contactsRepo;
     private final OutboxRepo outbox;
     private final ObjectMapper om;
 
@@ -31,7 +34,7 @@ public class ContactService {
                 .version(0)
                 .build();
 
-        UUID id = contacts.insert(c);
+        UUID id = contactsRepo.insert(c);
 
         // emit ContactCreated to outbox
         var evt = Map.of(
@@ -56,10 +59,21 @@ public class ContactService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public List<ContactResponse> find(String tenant, int offset, int limit) {
+        return contactsRepo.findPage(tenant, offset, limit).stream().map(ContactResponse::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ContactResponse findOne(String tenant, UUID id) {
+        Contact c = contactsRepo.findOne(tenant, id);
+        return c == null ? null : ContactResponse.toResponse(c);
+    }
+
     @Transactional
     public ContactResponse update(String tenant, UUID id, ContactUpdateRequest req) {
         // read existing (optional)
-        var existing = contacts.find(tenant, id).orElseThrow();
+        var existing = contactsRepo.find(tenant, id).orElseThrow();
 
         var updated = Contact.builder()
                 .id(id)
@@ -71,7 +85,7 @@ public class ContactService {
                 .build();
 
         // optimistic locking (expects current version from client)
-        var fresh = contacts.update(updated, req.getVersion());
+        var fresh = contactsRepo.update(updated, req.getVersion());
 
         // emit ContactUpdated
         var evt = Map.of(
@@ -98,7 +112,7 @@ public class ContactService {
 
     @Transactional
     public void delete(String tenant, UUID id, long expectedVersion) {
-        contacts.softDelete(tenant, id, expectedVersion);
+        contactsRepo.softDelete(tenant, id, expectedVersion);
 
         var evt = Map.of(
                 "type", "ContactDeleted",
@@ -109,6 +123,22 @@ public class ContactService {
                 "occurredAt", Instant.now().toString()
         );
         outbox.add(tenant, "CONTACT", id.toString(), "ContactDeleted", toJson(evt));
+    }
+
+    @Transactional
+    public void deleteBulk(String tenant, List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        // Soft delete via JdbcTemplate batch
+        int[] counts = contactsRepo.softDeleteBulk(tenant, ids);
+
+        // Build event payload once (bulk)
+        Map<String, Object> evt = Map.of(
+                "tenantId", tenant,
+                "contactIds", ids.stream().map(UUID::toString).toList(),
+                "visible", false,
+                "occurredAt", Instant.now().toString()
+        );
+        outbox.add(tenant, "CONTACT", null, "ContactsDeleted", toJson(evt));
     }
 
     private String toJson(Object obj) {

@@ -25,13 +25,40 @@ public class ContactRepo {
             .version(rs.getLong("version"))
             .createdAt(rs.getTimestamp("created_at").toInstant())
             .updatedAt(rs.getTimestamp("updated_at").toInstant())
-            .deletedAt(rs.getTimestamp("deleted_at") == null ? null : rs.getTimestamp("deleted_at").toInstant())
+            .deletedAt(rs.getTimestamp("deleted_at") == null ? null
+                    : rs.getTimestamp("deleted_at").toInstant())
             .build();
 
     public Optional<Contact> find(String tenant, UUID id) {
         return jdbc.query(
                 "select * from contacts where tenant_id=? and id=?",
                 RM, tenant, id).stream().findFirst();
+    }
+
+    /**
+     * Offset/limit list (only visible / not deleted).
+     */
+    public List<Contact> findPage(String tenant, int offset, int limit) {
+        String sql = """
+                    select id, tenant_id, full_name, email, phone, label, version, created_at, updated_at, deleted_at
+                    from contacts
+                    where tenant_id=? and deleted_at is null
+                    order by id
+                    offset ? limit ?
+                """;
+        return jdbc.query(sql, RM, tenant, offset, limit);
+    }
+
+    /**
+     * One by id.
+     */
+    public Contact findOne(String tenant, UUID id) {
+        List<Contact> list = jdbc.query("""
+                    select id, tenant_id, full_name, email, phone, label, version, created_at, updated_at, deleted_at
+                    from contacts
+                    where tenant_id=? and id=? and deleted_at is null
+                """, RM, tenant, id);
+        return list.isEmpty() ? null : list.get(0);
     }
 
     /**
@@ -144,6 +171,29 @@ public class ContactRepo {
       """;
 
         return jdbc.query(sql, RM, tenant, pattern, pattern, pattern, limit);
+    }
+
+    /**
+     * Bulk soft delete using JdbcTemplate batch.
+     */
+    public int[] softDeleteBulk(String tenant, List<UUID> ids) {
+        String sql = """
+                    update contacts
+                    set deleted_at=now(), visible=false, version=version+1
+                    where tenant_id=? and id=? and deleted_at is null
+                """;
+        return jdbc.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setString(1, tenant);
+                ps.setObject(2, ids.get(i));
+            }
+
+            @Override
+            public int getBatchSize() {
+                return ids.size();
+            }
+        });
     }
 
     public boolean contactExists(String tenant, UUID contactId) {

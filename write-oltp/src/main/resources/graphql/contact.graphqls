@@ -1,12 +1,14 @@
 extend type Query {
     contact(id: ID!): Contact
     searchContacts(q: String!, first: Int = 20): [Contact!]!
+    contacts(offset: Int = 0, limit: Int = 50): [Contact!]!
 }
 
 extend type Mutation {
     createContact(input: CreateContactInput!): Contact!
     updateContact(id: ID!, input: UpdateContactInput!): Contact!
     deleteContact(id: ID!, version: Long!): Boolean!
+    deleteContacts(ids: [ID!]!): Boolean!
 }
 
 type Contact {
