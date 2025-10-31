@@ -2,6 +2,7 @@ package com.github.dimitryivaniuta.gateway.write.domain.repo;
 
 import com.github.dimitryivaniuta.gateway.write.domain.Listing;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -11,6 +12,7 @@ import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -25,22 +27,21 @@ public class ListingRepo {
 
     private final JdbcTemplate jdbc;
 
-    private static final RowMapper<Listing> RM = new RowMapper<>() {
-        @Override
-        public Listing mapRow(ResultSet rs, int rowNum) throws SQLException {
-            Instant del = rs.getTimestamp("deleted_at") != null
-                    ? rs.getTimestamp("deleted_at").toInstant() : null;
-            return Listing.builder()
-                    .id(UUID.fromString(rs.getString("id")))
-                    .tenantId(rs.getString("tenant_id"))
-                    .title(rs.getString("title"))
-                    .subtitle(rs.getString("subtitle"))
-                    .version(rs.getLong("version"))
-                    .createdAt(rs.getTimestamp("created_at").toInstant())
-                    .updatedAt(rs.getTimestamp("updated_at").toInstant())
-                    .deletedAt(del)
-                    .build();
-        }
+    private static final RowMapper<Listing> RM = (rs, n) -> {
+        Listing l = new Listing();
+        l.setId(java.util.UUID.fromString(rs.getString("id")));
+        l.setTenantId(rs.getString("tenant_id"));
+        l.setTitle(rs.getString("title"));
+        l.setPrice(rs.getBigDecimal("price")); // never null after migration
+        l.setMlsId(rs.getString("mls_id"));
+        l.setVersion(rs.getLong("version"));
+        var cr = rs.getTimestamp("created_at");
+        var up = rs.getTimestamp("updated_at");
+        var del = rs.getTimestamp("deleted_at");
+        l.setCreatedAt(cr == null ? null : cr.toInstant());
+        l.setUpdatedAt(up == null ? null : up.toInstant());
+        l.setDeletedAt(del == null ? null : del.toInstant());
+        return l;
     };
 
     /**
@@ -66,6 +67,18 @@ public class ListingRepo {
                 },
                 tenant, id
         ).stream().findFirst();
+    }
+
+    /**
+     * One by id (visible only).
+     */
+    public Listing findOne(String tenant, UUID id) {
+        List<Listing> list = jdbc.query("""
+                    select id, tenant_id, title, price, mls_id, label, version, created_at, updated_at, deleted_at
+                    from listings
+                    where tenant_id=? and id=? and deleted_at is null
+                """, RM, tenant, id);
+        return list.isEmpty() ? null : list.getFirst();
     }
 
     /**
@@ -119,6 +132,20 @@ public class ListingRepo {
     }
 
     /**
+     * Offset/limit list (visible only).
+     */
+    public List<Listing> findPage(String tenant, int offset, int limit) {
+        String sql = """
+                    select id, tenant_id, title, price, mls_id, label, version, created_at, updated_at, deleted_at
+                    from listings
+                    where tenant_id=? and deleted_at is null
+                    order by id
+                    offset ? limit ?
+                """;
+        return jdbc.query(sql, RM, tenant, offset, limit);
+    }
+
+    /**
      * Soft delete Listing with optimistic locking.
      */
     public void softDelete(String tenant, UUID id, long expectedVersion) {
@@ -133,6 +160,29 @@ public class ListingRepo {
         }
     }
 
+    /**
+     * Bulk soft delete.
+     */
+    public int[] softDeleteBulk(String tenant, List<UUID> ids) {
+        String sql = """
+                    update listings
+                    set deleted_at=now(), visible=false, version=version+1
+                    where tenant_id=? and id=? and deleted_at is null
+                """;
+        return jdbc.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setString(1, tenant);
+                ps.setObject(2, ids.get(i));
+            }
+
+            @Override
+            public int getBatchSize() {
+                return ids.size();
+            }
+        });
+    }
+
     public List<Listing> searchByPrefix(String tenant, String q, Integer first) {
         final String term = (q == null ? "" : q.trim());
         if (term.isEmpty()) return List.of();
@@ -141,18 +191,18 @@ public class ListingRepo {
         final String pattern = term.toLowerCase() + "%";
 
         final String sql = """
-      select *
-        from listings
-       where tenant_id = ?
-         and deleted_at is null
-         and (
-              lower(title)              like ?
-           or lower(coalesce(subtitle,'')) like ?
-           or lower(coalesce(mls_id,''))   like ?
-         )
-       order by lower(title) asc, id asc
-       limit ?
-      """;
+                select *
+                  from listings
+                 where tenant_id = ?
+                   and deleted_at is null
+                   and (
+                        lower(title)              like ?
+                     or lower(coalesce(subtitle,'')) like ?
+                     or lower(coalesce(mls_id,''))   like ?
+                   )
+                 order by lower(title) asc, id asc
+                 limit ?
+                """;
 
         return jdbc.query(sql, RM, tenant, pattern, pattern, pattern, limit);
     }

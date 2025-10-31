@@ -1,12 +1,17 @@
+scalar BigDecimal
+
 extend type Query {
     listing(id: ID!): Listing
     searchListings(q: String!, first: Int = 20): [Listing!]!
+    listings(offset: Int = 0, limit: Int = 50): [Listing!]!
+    listingById(id: ID!): Listing
 }
 
 extend type Mutation {
     createListing(input: CreateListingInput!): Listing!
     updateListing(id: ID!, input: UpdateListingInput!): Listing!
     deleteListing(id: ID!, version: Long!): Boolean!
+    deleteListings(ids: [ID!]!): Boolean!
 }
 
 type Listing {
@@ -14,6 +19,7 @@ type Listing {
     title: String!
     subtitle: String
     mlsId: String
+    price: BigDecimal!
     version: Long!
     contactId: ID!
 }

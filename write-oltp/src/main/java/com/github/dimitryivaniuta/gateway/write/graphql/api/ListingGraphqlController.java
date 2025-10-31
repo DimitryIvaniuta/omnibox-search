@@ -9,6 +9,10 @@ import com.github.dimitryivaniuta.gateway.write.graphql.TenantContext;
 import com.github.dimitryivaniuta.gateway.write.service.ListingService;
 import java.util.List;
 import java.util.UUID;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.ContextValue;
@@ -30,6 +34,12 @@ public class ListingGraphqlController {
     }
 
     @QueryMapping
+    public ListingResponse listingById(@Argument UUID id) {
+        final String tenant = TenantContext.get();
+        return listings.findOne(tenant, id);
+    }
+
+    @QueryMapping
     public List<Listing> searchListings(@Argument String q,
                                         @Argument Integer first) {
         String tenant = TenantContext.get();
@@ -37,11 +47,22 @@ public class ListingGraphqlController {
         return repo.searchByPrefix(tenant, q, limit);
     }
 
+    @QueryMapping
+    public List<ListingResponse> listings(
+            @Argument @Min(0) Integer offset,
+            @Argument @Min(1) @Max(200) Integer limit
+    ) {
+        final String tenant = TenantContext.get();
+        final int off = offset == null ? 0 : offset;
+        final int lim = limit == null ? 50 : limit;
+        return listings.find(tenant, off, lim);
+    }
+
     @MutationMapping
     public Listing createListing(@Argument("input") ListingCreateRequest input) {
         String tenant = TenantContext.get();
         ListingResponse r = listings.create(tenant, input);
-        return repo.find(tenant, UUID.fromString(r.getId())).orElse(null);
+        return repo.find(tenant, r.getId()).orElse(null);
     }
 
     @MutationMapping
@@ -49,7 +70,7 @@ public class ListingGraphqlController {
                                  @Argument("input") ListingUpdateRequest input) {
         String tenant = TenantContext.get();
         ListingResponse r = listings.update(tenant, id, input);
-        return repo.find(tenant, UUID.fromString(r.getId())).orElse(null);
+        return repo.find(tenant, r.getId()).orElse(null);
     }
 
     @MutationMapping
@@ -59,4 +80,12 @@ public class ListingGraphqlController {
         listings.delete(tenant, id, version);
         return Boolean.TRUE;
     }
+
+    @MutationMapping
+    public Boolean deleteListings(@Argument("ids") @NotEmpty List<UUID> ids) {
+        final String tenant = TenantContext.get();
+        listings.deleteBulk(tenant, ids);
+        return Boolean.TRUE;
+    }
+
 }

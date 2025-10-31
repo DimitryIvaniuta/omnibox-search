@@ -18,7 +18,4 @@ public final class ListingMapper {
                 .build();
     }
 
-    public static ListingResponse toResponse(Listing l) {
-        return new ListingResponse(l.getId().toString(), l.getTitle(), l.getSubtitle(), l.getMlsId(), l.getVersion());
-    }
 }

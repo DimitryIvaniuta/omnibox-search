@@ -1,5 +1,6 @@
 package com.github.dimitryivaniuta.gateway.write.domain;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -24,6 +25,11 @@ public class Listing {
      * Mls ID.
      */
     private String mlsId;
+
+    /**
+     * BigDecimal, not null at DB, keep precision/scale hints
+     */
+    private BigDecimal price = BigDecimal.ZERO;
 
     /**
      * Multi-tenant isolation key.

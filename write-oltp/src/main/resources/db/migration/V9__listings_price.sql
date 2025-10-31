@@ -1,0 +1,2 @@
+ALTER TABLE listings
+    ADD COLUMN IF NOT EXISTS price numeric(19,2) NOT NULL DEFAULT 0;

@@ -8,12 +8,15 @@ import com.github.dimitryivaniuta.gateway.write.domain.repo.ListingRepo;
 import com.github.dimitryivaniuta.gateway.write.domain.repo.OutboxRepo;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.github.dimitryivaniuta.gateway.write.api.dto.ListingResponse.toResponse;
 
 /**
  * Application service for Listings:
@@ -60,11 +63,24 @@ public class ListingService {
         outbox.add(tenant, "LISTING", id.toString(), "ListingCreated", toJson(evt));
 
         return ListingResponse.builder()
-                .id(id.toString())
+                .id(id)
                 .title(l.getTitle())
                 .subtitle(l.getSubtitle())
                 .version(0)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ListingResponse> find(String tenant, int offset, int limit) {
+        return listingsRepo.findPage(tenant, offset, limit).stream()
+                .map(ListingResponse::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ListingResponse findOne(String tenant, UUID id) {
+        var l = listingsRepo.findOne(tenant, id);
+        return l == null ? null : toResponse(l);
     }
 
     @Transactional
@@ -97,7 +113,7 @@ public class ListingService {
         outbox.add(tenant, "LISTING", id.toString(), "ListingUpdated", toJson(evt));
 
         return ListingResponse.builder()
-                .id(id.toString())
+                .id(id)
                 .mlsId(fresh.getMlsId())
                 .title(fresh.getTitle())
                 .subtitle(fresh.getSubtitle())
@@ -118,6 +134,22 @@ public class ListingService {
                 "occurredAt", Instant.now().toString()
         );
         outbox.add(tenant, "LISTING", id.toString(), "ListingDeleted", toJson(evt));
+    }
+
+    @Transactional
+    public void deleteBulk(String tenant, List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return;
+
+        listingsRepo.softDeleteBulk(tenant, ids);
+
+        // Emit one bulk outbox event (you can switch to per-id if your consumers require)
+        Map<String, Object> evt = Map.of(
+                "tenantId", tenant,
+                "listingIds", ids.stream().map(UUID::toString).toList(),
+                "visible", false,
+                "occurredAt", Instant.now().toString()
+        );
+        outbox.add(tenant, "LISTING", null, "ListingsDeleted", toJson(evt));
     }
 
     private String toJson(Object obj) {

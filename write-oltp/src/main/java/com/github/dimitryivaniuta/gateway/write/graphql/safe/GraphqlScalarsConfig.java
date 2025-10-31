@@ -14,6 +14,8 @@ public class GraphqlScalarsConfig {
 
     @Bean
     public RuntimeWiringConfigurer scalarsConfigurer() {
-        return wiring -> wiring.scalar(ExtendedScalars.GraphQLLong);
+        return wiring -> wiring
+                .scalar(ExtendedScalars.GraphQLLong)
+                .scalar(ExtendedScalars.GraphQLBigDecimal);
     }
 }
