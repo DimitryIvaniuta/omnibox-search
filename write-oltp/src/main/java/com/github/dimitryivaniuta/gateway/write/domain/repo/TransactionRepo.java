@@ -200,7 +200,7 @@ public class TransactionRepo {
         if (term.isEmpty()) return List.of();
 
         final int limit = (first == null || first <= 0 || first > 100) ? 20 : first;
-        final String pattern = term.toLowerCase() + "%";
+        final String pattern = "%" + term.toLowerCase() + "%";
 
         final String sql = """
                 select id, tenant_id, title, subtitle,

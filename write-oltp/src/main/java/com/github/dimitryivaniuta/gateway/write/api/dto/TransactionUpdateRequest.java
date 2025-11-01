@@ -12,7 +12,8 @@ public class TransactionUpdateRequest {
     @NotBlank
     private String title;
     private String subtitle;
-    private Money total;
+    @NotNull
+    private MoneyInput total;
     private String status;
 
     private java.util.UUID contactId;

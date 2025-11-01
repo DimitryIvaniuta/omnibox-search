@@ -29,16 +29,19 @@ public class ListingRepo {
     private final JdbcTemplate jdbc;
 
     private static final RowMapper<Listing> RM = (rs, n) -> {
+        UUID contactId = rs.getObject("contact_id", UUID.class);
         Listing l = new Listing();
         l.setId(java.util.UUID.fromString(rs.getString("id")));
         l.setTenantId(rs.getString("tenant_id"));
         l.setTitle(rs.getString("title"));
+        l.setSubtitle(rs.getString("subtitle"));
         l.setPrice(Money.of(
                 rs.getBigDecimal("price"),
                 rs.getString("currency")
         ));
         l.setMlsId(rs.getString("mls_id"));
         l.setVersion(rs.getLong("version"));
+        l.setContactId(contactId);
         var cr = rs.getTimestamp("created_at");
         var up = rs.getTimestamp("updated_at");
         var del = rs.getTimestamp("deleted_at");
@@ -183,7 +186,6 @@ public class ListingRepo {
                                mls_id  = COALESCE(?, mls_id),
                                price   = COALESCE(?, price),
                                currency= COALESCE(?, currency),
-                               label   = COALESCE(?, label),
                                contact_id = COALESCE(?, contact_id),
                                version = version + 1,
                                updated_at = now()
@@ -267,7 +269,7 @@ public class ListingRepo {
         if (term.isEmpty()) return List.of();
 
         final int limit = (first == null || first <= 0 || first > 100) ? 20 : first;
-        final String pattern = term.toLowerCase() + "%";
+        final String pattern = "%" + term.toLowerCase() + "%";
 
         final String sql = """
                 select *

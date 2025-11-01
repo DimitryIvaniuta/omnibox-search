@@ -16,6 +16,7 @@ public class GraphqlScalarsConfig {
     public RuntimeWiringConfigurer scalarsConfigurer() {
         return wiring -> wiring
                 .scalar(ExtendedScalars.GraphQLLong)
+                .scalar(ExtendedScalars.GraphQLBigInteger)
                 .scalar(ExtendedScalars.GraphQLBigDecimal);
     }
 }

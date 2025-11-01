@@ -1,6 +1,7 @@
 package com.github.dimitryivaniuta.gateway.write.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.dimitryivaniuta.gateway.money.Money;
 import com.github.dimitryivaniuta.gateway.write.api.dto.*;
 import com.github.dimitryivaniuta.gateway.write.domain.Transaction;
 
@@ -38,7 +39,8 @@ public class TransactionService {
                 .tenantId(tenant)
                 .title(req.getTitle())
                 .subtitle(req.getSubtitle())
-                .total(req.getTotal())
+                .total(Money.of(req.getTotal().amount(),
+                        req.getTotal().currency()))
                 .status(req.getStatus())
                 .contactId(req.getContactId())
                 .listingId(req.getListingId())
@@ -94,7 +96,8 @@ public class TransactionService {
                 .id(id).tenantId(tenant)
                 .title(req.getTitle())
                 .subtitle(req.getSubtitle())
-                .total(req.getTotal())
+                .total(Money.of(req.getTotal().amount(),
+                        req.getTotal().currency()))
                 .status(req.getStatus())
                 .contactId(newContactId)   // may be null -> COALESCE in repo keeps current
                 .listingId(newListingId)   // may be null -> COALESCE keeps current

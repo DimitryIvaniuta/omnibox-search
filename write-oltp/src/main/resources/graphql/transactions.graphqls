@@ -26,8 +26,7 @@ type Transaction {
 input CreateTransactionInput {
     title: String!
     subtitle: String
-    amount: Float
-    currency: String
+    total: MoneyInput!
     status: String
     contactId: ID!
     listingId: ID!
@@ -36,8 +35,7 @@ input CreateTransactionInput {
 input UpdateTransactionInput {
     title: String!
     subtitle: String
-    amount: Float
-    currency: String
+    total: MoneyInput!
     status: String
     contactId: ID
     listingId: ID

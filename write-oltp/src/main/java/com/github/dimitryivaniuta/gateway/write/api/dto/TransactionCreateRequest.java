@@ -9,10 +9,14 @@ import java.math.BigDecimal;
 /** Request payload for Transaction creation. */
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class TransactionCreateRequest {
+
     @NotBlank
     private String title;
     private String subtitle;
-    private Money total;
+
+    @NotNull
+    private MoneyInput total;
+
     private String status;
 
     @NotNull
