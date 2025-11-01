@@ -1,20 +1,22 @@
 extend type Query {
     transaction(id: ID!): Transaction
     searchTransactions(q: String!, first: Int = 20): [Transaction!]!
+    transactions(offset: Int = 0, limit: Int = 50): [Transaction!]!
+    transactionById(id: ID!): Transaction
 }
 
 extend type Mutation {
     createTransaction(input: CreateTransactionInput!): Transaction!
     updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction!
     deleteTransaction(id: ID!, version: Long!): Boolean!
+    deleteTransactions(ids: [ID!]!): Boolean!
 }
 
 type Transaction {
     id: ID!
     title: String!
     subtitle: String
-    amount: Float
-    currency: String
+    total: Money!
     status: String
     version: Long!
     contactId: ID!

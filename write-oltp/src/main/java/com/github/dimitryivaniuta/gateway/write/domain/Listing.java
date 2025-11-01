@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.github.dimitryivaniuta.gateway.money.Money;
 import lombok.*;
 
 /**
@@ -27,9 +28,9 @@ public class Listing {
     private String mlsId;
 
     /**
-     * BigDecimal, not null at DB, keep precision/scale hints
+     * Money: amount + currency value
      */
-    private BigDecimal price = BigDecimal.ZERO;
+    private Money price = Money.zero("USD");
 
     /**
      * Multi-tenant isolation key.
@@ -49,7 +50,7 @@ public class Listing {
     /**
      * Optimistic locking counter.
      */
-    private long version;
+    private Long version = 0L;
 
     /**
      * Audit timestamps.

@@ -1,17 +1,23 @@
 package com.github.dimitryivaniuta.gateway.write.domain.repo;
 
+import com.github.dimitryivaniuta.gateway.money.Money;
 import com.github.dimitryivaniuta.gateway.write.domain.Transaction;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -39,8 +45,10 @@ public class TransactionRepo {
                 .tenantId(rs.getString("tenant_id"))
                 .title(rs.getString("title"))
                 .subtitle(rs.getString("subtitle"))
-                .amount(rs.getBigDecimal("amount"))
-                .currency(rs.getString("currency"))
+                .total(Money.of(
+                        rs.getBigDecimal("total"),
+                        rs.getString("currency")
+                ))
                 .status(rs.getString("status"))
                 .contactId(contactId)
                 .listingId(listingId)
@@ -50,14 +58,21 @@ public class TransactionRepo {
                 .deletedAt(deletedTs != null ? deletedTs.toInstant() : null)
                 .build();
     };
+
     /**
      * Insert new Transaction with DB-generated UUID and version=0. @return generated id
      */
     public UUID insertAndReturnId(Transaction t) {
         log.info("TX.create tenant={} contactId={} listingId={}", t.getTenantId(), t.getContactId(), t.getListingId());
+
+        // Normalize Money
+        var m = t.getTotal() != null ? t.getTotal() : Money.of(BigDecimal.ZERO, "USD");
+        var amount = m.amount() == null ? BigDecimal.ZERO : m.amount().setScale(2, RoundingMode.HALF_UP);
+        var currency = m.currency() == null ? "USD" : m.currency().trim().toUpperCase(Locale.ROOT);
+
         final String sql = """
                 insert into transactions
-                  (tenant_id, title, subtitle, amount, currency, status, 
+                  (tenant_id, title, subtitle, total, currency, status,
                    contact_id, listing_id,
                    version, created_at, updated_at, deleted_at)
                 values (?, ?, ?, ?, ?, ?,
@@ -69,38 +84,102 @@ public class TransactionRepo {
             ps.setString(1, t.getTenantId());
             ps.setString(2, t.getTitle());
             ps.setString(3, t.getSubtitle());
-            ps.setBigDecimal(4, t.getAmount());
-            ps.setString(5, t.getCurrency());
+            ps.setBigDecimal(4, amount);     // total
+            ps.setString(5, currency);       // currency
             ps.setString(6, t.getStatus());
-            ps.setObject(7, t.getContactId());  // UUID
-            ps.setObject(8, t.getListingId());  // UUID
+            ps.setObject(7, t.getContactId());  // UUID nullable OK
+            ps.setObject(8, t.getListingId());  // UUID nullable OK
             return ps;
         }, rs -> {
             rs.next();
-            return (UUID) rs.getObject(1);
+            try {
+                return rs.getObject(1, UUID.class);
+            } catch (Throwable ignore) {
+                return UUID.fromString(rs.getString(1));
+            }
         });
+    }
+
+    /**
+     * Offset/limit page (visible only).
+     */
+    public List<Transaction> findPage(String tenant, int offset, int limit) {
+        String sql = """
+                select id, tenant_id, title, subtitle,
+                       total, currency,
+                       status, contact_id, listing_id,
+                       version, created_at, updated_at, deleted_at
+                  from transactions
+                 where tenant_id = ?
+                   and deleted_at is null
+                 order by id
+                 offset ? limit ?
+                """;
+        return jdbc.query(sql, RM, tenant, offset, limit);
+    }
+
+    /**
+     * One by id (visible only).
+     */
+    public Transaction findOne(String tenant, UUID id) {
+        List<Transaction> list = jdbc.query("""
+                select id, tenant_id, title, subtitle,
+                       total, currency,
+                       status, contact_id, listing_id,
+                       version, created_at, updated_at, deleted_at
+                  from transactions
+                 where tenant_id = ?
+                   and id = ?
+                   and deleted_at is null
+                """, RM, tenant, id);
+        return list.isEmpty() ? null : list.get(0);
     }
 
     /**
      * Update Transaction with optimistic locking; returns fresh row.
      */
     public Transaction update(Transaction t, long expectedVersion) {
+        // Normalize money if provided (null ⇒ keep existing via COALESCE)
+        BigDecimal amount = null;
+        String currency = null;
+        if (t.getTotal() != null) {
+            amount = t.getTotal().amount() == null ? null
+                    : t.getTotal().amount().setScale(2, RoundingMode.HALF_UP);
+            if (t.getTotal().currency() != null) {
+                currency = t.getTotal().currency().trim().toUpperCase(Locale.ROOT);
+            }
+        }
+
         int c = jdbc.update("""
-                update transactions
-                   set title=?, subtitle=?, amount=?, currency=?, status=?,
-                       contact_id = coalesce(?, contact_id),
-                       listing_id = coalesce(?, listing_id),
-                       version=version+1, updated_at=now()
-                 where id=? and tenant_id=? and version=? and deleted_at is null
-                """, t.getTitle(), t.getSubtitle(), t.getAmount(), t.getCurrency(), t.getStatus(),
+                        update transactions
+                           set title      = COALESCE(?, title),
+                               subtitle   = COALESCE(?, subtitle),
+                               total      = COALESCE(?, total),
+                               currency   = COALESCE(?, currency),
+                               status     = COALESCE(?, status),
+                               contact_id = COALESCE(?, contact_id),
+                               listing_id = COALESCE(?, listing_id),
+                               version    = version + 1,
+                               updated_at = now()
+                         where id = ? and tenant_id = ? and version = ? and deleted_at is null
+                        """,
+                t.getTitle(),
+                t.getSubtitle(),
+                amount,                // may be null → keep old
+                currency,              // may be null → keep old
+                t.getStatus(),
                 t.getContactId(),
                 t.getListingId(),
-                t.getId(), t.getTenantId(), expectedVersion);
+                t.getId(), t.getTenantId(), expectedVersion
+        );
+
         if (c == 0) {
-            throw new OptimisticLockingFailureException("Transaction version mismatch or deleted: id=" + t.getId());
+            throw new OptimisticLockingFailureException(
+                    "Transaction version mismatch or deleted: id=" + t.getId());
         }
         return find(t.getTenantId(), t.getId()).orElseThrow();
     }
+
 
     /**
      * Soft delete by id/version in tenant.
@@ -124,26 +203,62 @@ public class TransactionRepo {
         final String pattern = term.toLowerCase() + "%";
 
         final String sql = """
-      select *
-        from transactions
-       where tenant_id = ?
-         and deleted_at is null
-         and (
-              lower(title)                 like ?
-           or lower(coalesce(subtitle,'')) like ?
-         )
-       order by lower(title) asc, id asc
-       limit ?
-      """;
+                select id, tenant_id, title, subtitle,
+                       total, currency,
+                       status, contact_id, listing_id,
+                       version, created_at, updated_at, deleted_at
+                  from transactions
+                 where tenant_id = ?
+                   and deleted_at is null
+                   and (
+                        lower(title)                  like ?
+                     or lower(coalesce(subtitle,'')) like ?
+                   )
+                 order by lower(title) asc, id asc
+                 limit ?
+                """;
 
         return jdbc.query(sql, RM, tenant, pattern, pattern, limit);
     }
+
 
     /**
      * Find by id in tenant.
      */
     public Optional<Transaction> find(String tenant, UUID id) {
-        return jdbc.query("select * from transactions where tenant_id=? and id=?", RM, tenant, id).stream()
-                .findFirst();
+        return jdbc.query("""
+                select id, tenant_id, title, subtitle,
+                       total, currency,
+                       status, contact_id, listing_id,
+                       version, created_at, updated_at, deleted_at
+                  from transactions
+                 where tenant_id = ?
+                   and id = ?
+                   and deleted_at is null
+                """, RM, tenant, id).stream().findFirst();
     }
+
+    /**
+     * Bulk soft delete.
+     */
+    public int[] softDeleteBulk(String tenant, List<UUID> ids) {
+        String sql = """
+                    update transactions
+                    set deleted_at=now(), visible=false, version=version+1
+                    where tenant_id=? and id=? and deleted_at is null
+                """;
+        return jdbc.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setString(1, tenant);
+                ps.setObject(2, ids.get(i));
+            }
+
+            @Override
+            public int getBatchSize() {
+                return ids.size();
+            }
+        });
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.github.dimitryivaniuta.gateway.write.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.dimitryivaniuta.gateway.money.Money;
 import com.github.dimitryivaniuta.gateway.write.api.dto.*;
 import com.github.dimitryivaniuta.gateway.write.domain.Listing;
 import com.github.dimitryivaniuta.gateway.write.domain.repo.ContactRepo;
@@ -42,8 +43,10 @@ public class ListingService {
                 .mlsId(req.getMlsId())
                 .title(req.getTitle())
                 .subtitle(req.getSubtitle())
+                .price(Money.of(req.getPrice().amount(),
+                        req.getPrice().currency()))
                 .contactId(req.getContactId())
-                .version(0)
+                .version(0L)
                 .build();
 
         UUID id = listingsRepo.insert(l);

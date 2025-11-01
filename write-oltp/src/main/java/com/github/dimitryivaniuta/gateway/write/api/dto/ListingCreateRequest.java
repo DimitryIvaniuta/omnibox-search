@@ -28,4 +28,8 @@ public class ListingCreateRequest {
     /** Contact owner of this listing (must exist in same tenant). */
     @NotNull
     private java.util.UUID contactId;
+
+    @NotNull
+    private MoneyInput price;
+
 }

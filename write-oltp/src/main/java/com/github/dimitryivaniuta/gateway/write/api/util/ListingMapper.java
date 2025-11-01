@@ -14,7 +14,7 @@ public final class ListingMapper {
                 .title(req.getTitle())
                 .subtitle(req.getSubtitle())
                 .mlsId(req.getMlsId())
-                .version(0)
+                .version(0L)
                 .build();
     }
 

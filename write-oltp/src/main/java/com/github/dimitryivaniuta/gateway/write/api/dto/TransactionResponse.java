@@ -1,6 +1,9 @@
 package com.github.dimitryivaniuta.gateway.write.api.dto;
 
+import com.github.dimitryivaniuta.gateway.money.Money;
+import com.github.dimitryivaniuta.gateway.write.domain.Transaction;
 import lombok.*;
+
 import java.math.BigDecimal;
 
 /**
@@ -10,33 +13,63 @@ import java.math.BigDecimal;
  * to Contact and Listing. ID fields are represented as strings for consistent
  * JSON formatting across the platform.
  */
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class TransactionResponse {
 
-    /** Transaction identifier (UUID as string). */
+    /**
+     * Transaction identifier (UUID as string).
+     */
     private String id;
 
-    /** Display title used in search and UI. */
+    /**
+     * Display title used in search and UI.
+     */
     private String title;
 
-    /** Optional secondary line used in search subtitle. */
+    /**
+     * Optional secondary line used in search subtitle.
+     */
     private String subtitle;
 
-    /** Monetary amount associated with the transaction (optional). */
-    private BigDecimal amount;
+    /**
+     * Monetary total amount associated with the transaction.
+     */
+    private Money total;
 
-    /** Currency code (e.g., USD, EUR) (optional). */
-    private String currency;
-
-    /** Business status (e.g., NEW, PENDING, CLOSED) (optional). */
+    /**
+     * Business status (e.g., NEW, PENDING, CLOSED) (optional).
+     */
     private String status;
 
-    /** Optimistic locking counter. */
+    /**
+     * Optimistic locking counter.
+     */
     private long version;
 
-    /** Required relation to Contact (UUID as string). */
+    /**
+     * Required relation to Contact (UUID as string).
+     */
     private String contactId;
 
-    /** Required relation to Listing (UUID as string). */
+    /**
+     * Required relation to Listing (UUID as string).
+     */
     private String listingId;
+
+    public static TransactionResponse toResponse(Transaction t) {
+        return new TransactionResponse(
+                t.getId().toString(),
+                t.getTitle(),
+                t.getSubtitle(),
+                t.getTotal(),
+                t.getStatus(),
+                t.getVersion(),
+                t.getContactId().toString(),
+                t.getListingId().toString()
+        );
+    }
 }

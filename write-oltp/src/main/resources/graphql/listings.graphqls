@@ -1,5 +1,3 @@
-scalar BigDecimal
-
 extend type Query {
     listing(id: ID!): Listing
     searchListings(q: String!, first: Int = 20): [Listing!]!
@@ -19,7 +17,7 @@ type Listing {
     title: String!
     subtitle: String
     mlsId: String
-    price: BigDecimal!
+    price: Money!
     version: Long!
     contactId: ID!
 }
@@ -29,6 +27,7 @@ input CreateListingInput {
     subtitle: String
     mlsId: String
     contactId: ID!
+    price: MoneyInput!
 }
 
 input UpdateListingInput {

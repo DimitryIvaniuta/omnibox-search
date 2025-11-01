@@ -1,3 +1,9 @@
 scalar Long
 type Query
 type Mutation
+scalar BigDecimal
+type Money {
+    amount: BigDecimal!
+    currency: String! # ISO-4217, e.g. "USD", "PLN"
+}
+input MoneyInput { amount: BigDecimal!, currency: String! }

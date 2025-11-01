@@ -1,5 +1,6 @@
 package com.github.dimitryivaniuta.gateway.write.api.dto;
 
+import com.github.dimitryivaniuta.gateway.money.Money;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -11,8 +12,7 @@ public class TransactionUpdateRequest {
     @NotBlank
     private String title;
     private String subtitle;
-    private BigDecimal amount;
-    private String currency;
+    private Money total;
     private String status;
 
     private java.util.UUID contactId;

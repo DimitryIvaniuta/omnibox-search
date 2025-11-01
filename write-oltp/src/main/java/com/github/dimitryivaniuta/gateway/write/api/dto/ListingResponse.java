@@ -1,5 +1,6 @@
 package com.github.dimitryivaniuta.gateway.write.api.dto;
 
+import com.github.dimitryivaniuta.gateway.money.Money;
 import com.github.dimitryivaniuta.gateway.write.domain.Listing;
 import lombok.*;
 
@@ -17,7 +18,7 @@ import java.util.UUID;
 public class ListingResponse {
     private UUID id;
     private String mlsId;
-    private BigDecimal price;
+    private Money price;
     private String title;
     private String subtitle;
     private long version;
@@ -26,7 +27,7 @@ public class ListingResponse {
         return new ListingResponse(
                 l.getId(),
                 l.getMlsId(),
-                l.getPrice() == null ? BigDecimal.ZERO : l.getPrice(),
+                l.getPrice(),
                 l.getTitle(),
                 l.getSubtitle(),
                 l.getVersion()

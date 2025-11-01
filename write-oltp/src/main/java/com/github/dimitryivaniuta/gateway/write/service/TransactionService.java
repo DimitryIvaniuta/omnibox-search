@@ -5,6 +5,7 @@ import com.github.dimitryivaniuta.gateway.write.api.dto.*;
 import com.github.dimitryivaniuta.gateway.write.domain.Transaction;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,7 +28,7 @@ public class TransactionService {
 
     private final ListingRepo listingRepo;
     private final ContactRepo contactRepo;
-    private final TransactionRepo txns;
+    private final TransactionRepo transactionRepo;
     private final OutboxRepo outbox;
     private final ObjectMapper om;
 
@@ -37,15 +38,14 @@ public class TransactionService {
                 .tenantId(tenant)
                 .title(req.getTitle())
                 .subtitle(req.getSubtitle())
-                .amount(req.getAmount())
-                .currency(req.getCurrency())
+                .total(req.getTotal())
                 .status(req.getStatus())
                 .contactId(req.getContactId())
                 .listingId(req.getListingId())
                 .version(0)
                 .build();
 
-        UUID id = txns.insertAndReturnId(t);
+        UUID id = transactionRepo.insertAndReturnId(t);
 
         var evt = Map.of(
                 "type", "TransactionCreated",
@@ -63,8 +63,7 @@ public class TransactionService {
                 .id(id.toString())
                 .title(t.getTitle())
                 .subtitle(t.getSubtitle())
-                .amount(t.getAmount())
-                .currency(t.getCurrency())
+                .total(t.getTotal())
                 .status(t.getStatus())
                 .contactId(req.getContactId().toString())
                 .listingId(req.getListingId().toString())
@@ -95,14 +94,13 @@ public class TransactionService {
                 .id(id).tenantId(tenant)
                 .title(req.getTitle())
                 .subtitle(req.getSubtitle())
-                .amount(req.getAmount())
-                .currency(req.getCurrency())
+                .total(req.getTotal())
                 .status(req.getStatus())
                 .contactId(newContactId)   // may be null -> COALESCE in repo keeps current
                 .listingId(newListingId)   // may be null -> COALESCE keeps current
                 .build();
 
-        var fresh = txns.update(updated, req.getVersion());
+        var fresh = transactionRepo.update(updated, req.getVersion());
 
         var evt = new java.util.LinkedHashMap<String, Object>(10);
         evt.put("type", "TransactionUpdated");
@@ -128,16 +126,30 @@ public class TransactionService {
                 .id(id.toString())
                 .title(fresh.getTitle())
                 .subtitle(fresh.getSubtitle())
-                .amount(fresh.getAmount())
-                .currency(fresh.getCurrency())
+                .total(fresh.getTotal())
                 .status(fresh.getStatus())
                 .version(fresh.getVersion())
                 .build();
     }
 
+
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> find(String tenant, int offset, int limit) {
+        return transactionRepo.findPage(tenant, offset, limit).stream()
+                .map(TransactionResponse::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TransactionResponse findOne(String tenant, UUID id) {
+        var t = transactionRepo.findOne(tenant, id);
+        return t == null ? null : TransactionResponse.toResponse(t);
+    }
+
+
     @Transactional
     public void delete(String tenant, UUID id, long expectedVersion) {
-        txns.softDelete(tenant, id, expectedVersion);
+        transactionRepo.softDelete(tenant, id, expectedVersion);
 
         var evt = Map.of(
                 "type", "TransactionDeleted",
@@ -148,6 +160,21 @@ public class TransactionService {
                 "occurredAt", Instant.now().toString()
         );
         outbox.add(tenant, "TRANSACTION", id.toString(), "TransactionDeleted", toJson(evt));
+    }
+
+    @Transactional
+    public void deleteBulk(String tenant, List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return;
+
+        transactionRepo.softDeleteBulk(tenant, ids);
+
+        Map<String, Object> evt = Map.of(
+                "tenantId", tenant,
+                "transactionIds", ids.stream().map(UUID::toString).toList(),
+                "visible", false,
+                "occurredAt", Instant.now().toString()
+        );
+        outbox.add(tenant, "TRANSACTION", null, "TransactionsDeleted", toJson(evt));
     }
 
     private String toJson(Object obj) {

@@ -9,6 +9,10 @@ import com.github.dimitryivaniuta.gateway.write.graphql.TenantContext;
 import com.github.dimitryivaniuta.gateway.write.service.TransactionService;
 import java.util.List;
 import java.util.UUID;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.ContextValue;
@@ -37,6 +41,23 @@ public class TransactionGraphqlController {
         return repo.searchByPrefix(tenant, q, limit);
     }
 
+    @QueryMapping
+    public List<TransactionResponse> transactions(
+            @Argument @Min(0) Integer offset,
+            @Argument @Min(1) @Max(200) Integer limit
+    ) {
+        final String tenant = TenantContext.get();
+        final int off = offset == null ? 0 : offset;
+        final int lim = limit == null ? 50 : limit;
+        return txs.find(tenant, off, lim);
+    }
+
+    @QueryMapping
+    public TransactionResponse transactionById(@Argument UUID id) {
+        final String tenant = TenantContext.get();
+        return txs.findOne(tenant, id);
+    }
+
     @MutationMapping
     public Transaction createTransaction(@Argument("input") TransactionCreateRequest input) {
         String tenant = TenantContext.get();
@@ -58,6 +79,13 @@ public class TransactionGraphqlController {
                                      @Argument Long version) {
         String tenant = TenantContext.get();
         txs.delete(tenant, id, version);
+        return Boolean.TRUE;
+    }
+
+    @MutationMapping
+    public Boolean deleteTransactions(@Argument("ids") @NotEmpty List<UUID> ids) {
+        final String tenant = TenantContext.get();
+        txs.deleteBulk(tenant, ids);
         return Boolean.TRUE;
     }
 }

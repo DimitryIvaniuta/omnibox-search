@@ -43,7 +43,7 @@ Deliver a single GraphQL search endpoint that returns **grouped, ranked, case‑
 
 ```graphql
 # Query
-type Query {
+extend type Query {
   omnibox(q: String!, limitPerGroup: Int = 5): OmniboxResult!
 }
 
