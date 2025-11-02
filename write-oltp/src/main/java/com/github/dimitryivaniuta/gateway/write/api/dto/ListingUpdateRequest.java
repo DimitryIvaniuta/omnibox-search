@@ -30,4 +30,8 @@ public class ListingUpdateRequest {
      */
     @NotNull
     private Long version;
+
+    @NotNull
+    private MoneyInput price;
+
 }

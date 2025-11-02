@@ -35,4 +35,6 @@ input UpdateListingInput {
     subtitle: String
     contactId: ID
     version: Long!
+    mlsId: String
+    price: MoneyInput!
 }

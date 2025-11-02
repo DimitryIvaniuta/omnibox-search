@@ -96,11 +96,16 @@ public class ListingService {
                 .id(id).tenantId(tenant)
                 .title(req.getTitle())
                 .subtitle(req.getSubtitle())
+                .mlsId(req.getMlsId())
+                .price(Money.of(
+                        req.getPrice().amount(),
+                        req.getPrice().currency()
+                ))
                 .contactId(req.getContactId())
                 .build();
 
         var fresh = listingsRepo.update(updated, req.getVersion());
-
+        // todo add event price
         var evt = Map.of(
                 "type", "ListingUpdated",
                 "tenantId", tenant,
@@ -120,6 +125,7 @@ public class ListingService {
                 .mlsId(fresh.getMlsId())
                 .title(fresh.getTitle())
                 .subtitle(fresh.getSubtitle())
+                .price(fresh.getPrice())
                 .version(fresh.getVersion())
                 .build();
     }
