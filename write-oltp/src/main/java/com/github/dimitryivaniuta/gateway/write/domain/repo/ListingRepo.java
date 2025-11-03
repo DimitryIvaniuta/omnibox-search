@@ -97,7 +97,7 @@ public class ListingRepo {
      */
     public Listing findOne(String tenant, UUID id) {
         List<Listing> list = jdbc.query("""
-                    select id, tenant_id, title, price, currency, mls_id, label, version, created_at, updated_at, deleted_at
+                    select id, tenant_id, title, price, currency, mls_id, version, created_at, updated_at, deleted_at
                     from listings
                     where tenant_id=? and id=? and deleted_at is null
                 """, RM, tenant, id);
@@ -215,9 +215,10 @@ public class ListingRepo {
      */
     public List<Listing> findPage(String tenant, int offset, int limit) {
         String sql = """
-                    select id, tenant_id, title, 
+                    select id, tenant_id, title, subtitle, 
                            price, currency, 
-                           mls_id, label, version, created_at, updated_at, deleted_at
+                           contact_id,
+                           mls_id, version, created_at, updated_at, deleted_at
                     from listings
                     where tenant_id=? and deleted_at is null
                     order by id

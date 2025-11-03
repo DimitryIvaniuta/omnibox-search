@@ -21,6 +21,7 @@ public class ListingResponse {
     private Money price;
     private String title;
     private String subtitle;
+    private String contactId;
     private long version;
 
     public static ListingResponse toResponse(Listing l) {
@@ -30,6 +31,7 @@ public class ListingResponse {
                 l.getPrice(),
                 l.getTitle(),
                 l.getSubtitle(),
+                l.getContactId().toString(),
                 l.getVersion()
         );
     }
