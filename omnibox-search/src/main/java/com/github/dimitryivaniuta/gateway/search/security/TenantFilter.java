@@ -24,7 +24,7 @@ public class TenantFilter extends OncePerRequestFilter {
                 tenant = request.getHeader("X-Tenant");
                 user = request.getHeader("X-User");
             }
-            if (!StringUtils.hasText(tenant)) tenant = "demo"; // replace in prod
+            if (!StringUtils.hasText(tenant)) tenant = "demo-tenant"; // replace in prod
             TenantContextHolder.set(new TenantContext(tenant, user));
             chain.doFilter(request, response);
         } finally {
