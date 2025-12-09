@@ -79,6 +79,7 @@ public class TransactionRepo {
                         ?, ?, 0, now(), now(), null)
                 returning id
                 """;
+        t.setStatus("NEW");
         return jdbc.query(con -> {
             var ps = con.prepareStatement(sql);
             ps.setString(1, t.getTenantId());
